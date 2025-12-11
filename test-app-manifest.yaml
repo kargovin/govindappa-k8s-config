@@ -1,0 +1,52 @@
+# test-app-manifest.yaml (in your Config Repo)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-app-deployment
+spec:
+  # ... standard spec ...
+  template:
+    spec:
+      containers:
+      - name: test-app-container
+        # CRITICAL: Flux will update this tag automatically!
+        image: k4rth/gitops-test-app:latest-placeholder
+        ports:
+        - containerPort: 8080 # Matches the Dockerfile CMD port
+
+---
+# 2. Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-app-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+# 3. Ingress (The magic)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-app-ingress
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: test.govindappa.com # Subdomain will be test.govindappa.com
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  rules:
+  - host: test.govindappa.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-app-service
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - test.govindappa.com
+    secretName: test-app-tls-cert
