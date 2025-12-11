@@ -1,22 +1,35 @@
 # test-app-manifest.yaml (in your Config Repo)
+
+# 1. Deployment (The application container)
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: test-app-deployment
   namespace: default
+  labels:
+    app: gitops-test-app # Optional: Label the deployment itself
 spec:
-  # ... standard spec ...
+  replicas: 1
+
+  # 🛑 FIX: The Selector block links the Deployment to its Pods
+  selector:
+    matchLabels:
+      app: gitops-test-app # <--- MUST MATCH the Pod's labels below
+
   template:
+    metadata:
+      labels:
+        app: gitops-test-app # <--- The Pod's label
     spec:
       containers:
       - name: test-app-container
         # CRITICAL: Flux will update this tag automatically!
-        image: k4rth/gitops-test-app:latest-placeholder
+        image: k4rth/gitops-test-app:latest-placeholder # {"$imagepolicy": "flux-system:gitops-test-app-policy"}
         ports:
         - containerPort: 8080 # Matches the Dockerfile CMD port
 
 ---
-# 2. Service
+# 2. Service (Internal Load Balancing)
 apiVersion: v1
 kind: Service
 metadata:
@@ -24,18 +37,21 @@ metadata:
   namespace: default
 spec:
   type: ClusterIP
+  selector:
+    app: gitops-test-app # <--- MUST MATCH the Pod's labels
   ports:
   - port: 80
-    targetPort: 8080
+    targetPort: 8080 # Matches the containerPort
+
 ---
-# 3. Ingress (The magic)
+# 3. Ingress (External Routing and SSL)
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: test-app-ingress
   namespace: default
   annotations:
-    external-dns.alpha.kubernetes.io/hostname: test.govindappa.com # Subdomain will be test.govindappa.com
+    external-dns.alpha.kubernetes.io/hostname: test.govindappa.com
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   rules:
