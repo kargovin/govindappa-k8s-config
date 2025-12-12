@@ -22,7 +22,7 @@ spec:
       containers:
       - name: test-app-container
         # CRITICAL: Flux will update this tag automatically!
-        image: k4rth/gitops-test-app:main-46b9d41271acdb63e5af25b74541a5d5b2ffc52b # {"$imagepolicy": "flux-system:gitops-test-app-policy"}
+        image: k4rth/gitops-test-app:main-fd490bacacd2caadcdebe9a2c4954c2e358c0906 # {"$imagepolicy": "flux-system:gitops-test-app-policy"}
         ports:
         - containerPort: 8080 # Matches the Dockerfile CMD port
 ---
