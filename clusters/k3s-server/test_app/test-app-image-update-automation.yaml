@@ -1,4 +1,4 @@
-apiVersion: image.toolkit.fluxcd.io/v1beta1 # Note: Different API version than ImagePolicy/Repo
+apiVersion: image.toolkit.fluxcd.io/v1 # Note: Different API version than ImagePolicy/Repo
 kind: ImageUpdateAutomation
 metadata:
   name: gitops-test-app-update

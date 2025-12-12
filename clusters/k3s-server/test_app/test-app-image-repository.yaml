@@ -1,4 +1,4 @@
-apiVersion: image.toolkit.fluxcd.io/v1 # Use v1
+apiVersion: image.toolkit.fluxcd.io/v1
 kind: ImageRepository
 metadata:
   name: gitops-test-app-repo
@@ -6,16 +6,3 @@ metadata:
 spec:
   image: k4rth/gitops-test-app
   interval: 1m
-
-  # FIX: Use tagFilter to combine regex matching and extraction
-  tagFilter:
-    # Use a regex that matches the CI tag: e.g., 'main-20dd1e3b9b8'
-    pattern: '^main-(?P<sha>[a-f0-9]+)'
-
-    # Use a specific version of semver or alphabetical sorting
-    extract: '$sha' # Use the captured group from the pattern for sorting
-
-    # The actual sorting logic
-    policy:
-      alphabetical:
-        order: asc # Ensures the latest SHA is picked
