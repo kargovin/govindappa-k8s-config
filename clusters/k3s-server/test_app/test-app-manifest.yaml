@@ -10,12 +10,10 @@ metadata:
     app: gitops-test-app # Optional: Label the deployment itself
 spec:
   replicas: 1
-
   # 🛑 FIX: The Selector block links the Deployment to its Pods
   selector:
     matchLabels:
       app: gitops-test-app # <--- MUST MATCH the Pod's labels below
-
   template:
     metadata:
       labels:
@@ -24,10 +22,9 @@ spec:
       containers:
       - name: test-app-container
         # CRITICAL: Flux will update this tag automatically!
-        image: k4rth/gitops-test-app:latest-placeholder # {"$imagepolicy": "flux-system:gitops-test-app-policy"}
+        image: k4rth/gitops-test-app:main-46b9d41271acdb63e5af25b74541a5d5b2ffc52b # {"$imagepolicy": "flux-system:gitops-test-app-policy"}
         ports:
         - containerPort: 8080 # Matches the Dockerfile CMD port
-
 ---
 # 2. Service (Internal Load Balancing)
 apiVersion: v1
@@ -42,7 +39,6 @@ spec:
   ports:
   - port: 80
     targetPort: 8080 # Matches the containerPort
-
 ---
 # 3. Ingress (External Routing and SSL)
 apiVersion: networking.k8s.io/v1
