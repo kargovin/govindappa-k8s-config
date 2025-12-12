@@ -1,0 +1,30 @@
+apiVersion: image.toolkit.fluxcd.io/v1beta1 # Note: Different API version than ImagePolicy/Repo
+kind: ImageUpdateAutomation
+metadata:
+  name: gitops-test-app-update
+  namespace: flux-system
+spec:
+  # The source to update is the main GitRepository created during bootstrap
+  sourceRef:
+    kind: GitRepository
+    name: flux-system # Name of the bootstrap repository object
+  
+  # The branch Flux should check out and push to
+  interval: 1m
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: flux@users.noreply.github.com
+        name: Flux
+      messageTemplate: |
+        :zap: Automated image update for test-app
+    push:
+      branch: main # Branch to push the new commit to
+      
+  # Defines which files to update based on ImagePolicy tags
+  update:
+    path: ./clusters/k3s-server/test_app # <-- Flux will scan this path for manifests
+    strategy: Setters

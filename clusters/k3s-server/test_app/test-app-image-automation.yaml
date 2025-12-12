@@ -1,35 +1,13 @@
 apiVersion: image.toolkit.fluxcd.io/v1beta2
 kind: ImagePolicy
 metadata:
-  # Name used to reference this policy in your deployment manifest
   name: gitops-test-app-policy
   namespace: flux-system
 spec:
-  # Reference the ImageRepository resource we defined above
   imageRepositoryRef:
     name: gitops-test-app-repo
 
-  # Policy to select the latest tag: alphabetical ascending order works
-  # well for Git commit SHAs, as newer SHAs often sort higher.
+  # Now only contains the policy logic:
   policy:
     alphabetical:
       order: asc
-
-  # 🛑 CRITICAL SECTION: Defines the automation loop
-  imageAutomation:
-    # Use the commit details established during the flux bootstrap process
-    git:
-      commit:
-        author:
-          email: flux@users.noreply.github.com
-          name: Flux
-        messageTemplate: |
-          :zap: Automated image update for test-app
-
-    # Defines which file and which field to update
-    update:
-      # Path to the application manifest in your Configuration Repository
-      path: ./clusters/k3s-server/test-app-manifest.yaml
-
-      # Strategy to replace the placeholder tag
-      strategy: Setters
