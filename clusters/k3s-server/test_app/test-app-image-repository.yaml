@@ -1,24 +1,21 @@
-apiVersion: image.toolkit.fluxcd.io/v1beta2
+apiVersion: image.toolkit.fluxcd.io/v1 # Use v1
 kind: ImageRepository
 metadata:
-  # Name used to link to the ImagePolicy
   name: gitops-test-app-repo
-  namespace: flux-system # Must be in the flux-system namespace
+  namespace: flux-system
 spec:
-  # The image path on Docker Hub
   image: k4rth/gitops-test-app
-
-  # How often to check the registry for new tags
   interval: 1m
 
-  # Set provider if you were using a different registry like ECR or GCR
-  # provider: generic
+  # FIX: Use tagFilter to combine regex matching and extraction
+  tagFilter:
+    # Use a regex that matches the CI tag: e.g., 'main-20dd1e3b9b8'
+    pattern: '^main-(?P<sha>[a-f0-9]+)'
 
-  # The tag pattern to filter.
-  # We use '*' to look at all tags (i.e., all commit SHAs)
-  tagSelector:
-    pattern: '^main.*' # Assuming your CI tags images like main-abcdef123...
+    # Use a specific version of semver or alphabetical sorting
+    extract: '$sha' # Use the captured group from the pattern for sorting
 
-  # If your Docker Hub image was private, you would add a secretRef here:
-  # secretRef:
-  #   name: docker-pull-secret
+    # The actual sorting logic
+    policy:
+      alphabetical:
+        order: asc # Ensures the latest SHA is picked
