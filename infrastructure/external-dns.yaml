@@ -17,8 +17,12 @@ spec:
   values:
     # 1. Provider Settings
     provider: cloudflare
-    cloudflare:
-      apiTokenSecret: cloudflare-api-token
+    env:
+      - name: CF_API_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: cloudflare-api-token
+            key: api-token
     # 2. Scope & Filters
     domainFilters:
       - govindappa.com
