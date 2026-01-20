@@ -1,4 +1,4 @@
-apiVersion: helm.toolkit.fluxcd.io/v1beta2
+apiVersion: helm.toolkit.fluxcd.io/v12beta1
 kind: HelmRelease
 metadata:
   name: cert-manager
