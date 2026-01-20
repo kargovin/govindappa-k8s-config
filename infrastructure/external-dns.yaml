@@ -9,7 +9,7 @@ spec:
   chart:
     spec:
       chart: external-dns
-      version: "6.20.4" # Best practice to pin a version (approximate based on v0.13.5 app version)
+      version: "9.0.1" # Best practice to pin a version (approximate based on v0.13.5 app version)
       sourceRef:
         kind: HelmRepository
         name: bitnami
