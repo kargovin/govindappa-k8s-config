@@ -15,3 +15,13 @@ metadata:
 spec:
   interval: 1h
   url: https://charts.bitnami.com/bitnami
+
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: external-dns-official  # New distinctive name
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://kubernetes-sigs.github.io/external-dns/ # <--- The Official Source

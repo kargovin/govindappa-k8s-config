@@ -9,18 +9,12 @@ spec:
   chart:
     spec:
       chart: external-dns
-      version: "9.0.2" # Best practice to pin a version (approximate based on v0.13.5 app version)
+      version: "1.19.0" # Best practice to pin a version (approximate based on v0.13.5 app version)
       sourceRef:
         kind: HelmRepository
-        name: bitnami
+        name: external-dns-official
         namespace: flux-system
   values:
-    # forcing to use google k8s registry and force version to 0.18.0
-    image:
-      registry: registry.k8s.io
-      repository: external-dns/external-dns
-      # We match the tag to the App Version of Chart 9.0.2
-      tag: v0.18.0
     # 1. Provider Settings
     provider: cloudflare
     cloudflare:
