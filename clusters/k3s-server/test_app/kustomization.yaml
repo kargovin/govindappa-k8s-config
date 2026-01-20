@@ -3,5 +3,5 @@ kind: Kustomization
 resources:
   - test-app-image-automation.yaml
   - test-app-image-repository.yaml
-  - test-app-image-update-automation.yam
+  - test-app-image-update-automation.yaml
   - test-app-manifest.yaml
