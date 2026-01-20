@@ -8,12 +8,14 @@ spec:
     name: gitops-test-app-repo
 
   policy:
-    alphabetical:
+    numerical:
       order: asc
 
   filterTags:
-    # Pattern to filter for tags starting with 'main'
-    pattern: '^main-(?P<sha>[a-f0-9]+)'
+    # 1. Capture the branch 'main'
+    # 2. Capture the timestamp digits into a group named 'ts' (?P<ts>...)
+    # 3. Capture the sha (ignored for sorting, but kept in the tag)
+    pattern: '^main-(?P<ts>[0-9]+)-(?P<sha>[a-f0-9]+)'
 
-    # We extract the entire match ($0) or the SHA group ($sha) for comparison
-    extract: '$0'
+    # Sort using ONLY the captured 'ts' group
+    extract: '$ts'
