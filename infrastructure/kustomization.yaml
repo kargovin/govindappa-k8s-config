@@ -1,0 +1,7 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - sources.yaml        # Adds the Helm Repos (Bitnami/Jetstack)
+  - cert-manager.yaml   # Installs the Cert-Manager Tool
+  - cluster-issuer.yaml # Configures Let's Encrypt
+  - external-dns.yaml   # Installs the Cloudflare Updater
