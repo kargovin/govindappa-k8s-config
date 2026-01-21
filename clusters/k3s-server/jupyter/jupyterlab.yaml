@@ -85,8 +85,6 @@ metadata:
   namespace: default
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    # Increase upload size for large datasets/models
-    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
 spec:
   ingressClassName: traefik
   tls:
