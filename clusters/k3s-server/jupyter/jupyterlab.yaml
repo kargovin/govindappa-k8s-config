@@ -34,6 +34,8 @@ spec:
       - name: jupyter
         # Use Quay.io to avoid Docker Hub Rate Limits!
         image: quay.io/jupyter/scipy-notebook:latest
+        command: [ "start-notebook.sh" ]
+        args: [ "--ip=0.0.0.0" ]
         ports:
         - containerPort: 8888
         env:
