@@ -8,3 +8,5 @@ resources:
   - test_app/
 
   - simple-app.yaml
+
+  - jupyter/

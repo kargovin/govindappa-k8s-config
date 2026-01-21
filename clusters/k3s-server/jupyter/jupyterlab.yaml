@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jupyter-pvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi  # Adjust size as needed
+  # K3s comes with 'local-path' by default, which works great here
+  storageClassName: local-path
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jupyterlab
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: jupyterlab
+  template:
+    metadata:
+      labels:
+        app: jupyterlab
+    spec:
+      securityContext:
+        fsGroup: 100 # Allows the 'jovyan' user to write to the PVC
+      containers:
+      - name: jupyter
+        # Use Quay.io to avoid Docker Hub Rate Limits!
+        image: quay.io/jupyter/scipy-notebook:latest
+        ports:
+        - containerPort: 8888
+        env:
+        # Read the password from the secret you created
+        - name: JUPYTER_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: jupyter-token
+              key: token
+        # Optional: Start in Lab mode by default
+        - name: JUPYTER_ENABLE_LAB
+          value: "yes"
+        volumeMounts:
+        - name: notebook-data
+          mountPath: /home/jovyan/work
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "4Gi" # Cap it so it doesn't crash the server
+            cpu: "2000m"
+        lifecycle:
+          postStart:
+            exec:
+              command: [ "/bin/sh", "-c", "pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install --user" ]
+      volumes:
+      - name: notebook-data
+        persistentVolumeClaim:
+          claimName: jupyter-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jupyter-service
+  namespace: default
+spec:
+  selector:
+    app: jupyterlab
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8888
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jupyter-ingress
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Increase upload size for large datasets/models
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - jupyter.govindappa.com
+    secretName: jupyter-tls
+  rules:
+  - host: jupyter.govindappa.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: jupyter-service
+            port:
+              number: 80
