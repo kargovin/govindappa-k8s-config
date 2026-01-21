@@ -58,10 +58,6 @@ spec:
           limits:
             memory: "4Gi" # Cap it so it doesn't crash the server
             cpu: "2000m"
-        lifecycle:
-          postStart:
-            exec:
-              command: [ "/bin/sh", "-c", "pip install jupyter_contrib_nbextensions && jupyter contrib nbextension install --user" ]
       volumes:
       - name: notebook-data
         persistentVolumeClaim:
