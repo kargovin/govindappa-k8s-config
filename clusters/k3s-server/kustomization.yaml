@@ -6,3 +6,5 @@ resources:
   - infrastructure.yaml
 
   - test_app/
+
+  - simple-app.yaml

@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: static-web
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: static-web
+  template:
+    metadata:
+      labels:
+        app: static-web
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        # Map the container's web folder...
+        - mountPath: /usr/share/nginx/html
+          name: local-html
+          readOnly: true
+      volumes:
+      # ...to the actual folder on your dedicated server
+      - name: local-html
+        hostPath:
+          path: /var/www/govindappa.com/html
+          type: Directory
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: static-web-service
+  namespace: default
+spec:
+  selector:
+    app: static-web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: static-web-ingress
+  namespace: default
+  annotations:
+    # Use Cert-Manager to get a real SSL cert automatically
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # Optional: Force www redirect (depends on your preference)
+    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - govindappa.com
+    - www.govindappa.com
+    secretName: govindappa-tls
+  rules:
+  - host: govindappa.com
+    http: &http_rules
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: static-web-service
+            port:
+              number: 80
+  - host: www.govindappa.com
+    http: *http_rules
