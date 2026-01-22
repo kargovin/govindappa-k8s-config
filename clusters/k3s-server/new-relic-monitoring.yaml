@@ -1,14 +1,4 @@
-apiVersion: source.toolkit.fluxcd.io/v1beta2
-kind: HelmRepository
-metadata:
-  name: newrelic
-  namespace: flux-system
-spec:
-  interval: 1h
-  url: https://helm-charts.newrelic.com
-
----
-apiVersion: helm.toolkit.fluxcd.io/v2beta1
+apiVersion: helm.toolkit.fluxcd.io/v2
 kind: HelmRelease
 metadata:
   name: newrelic-bundle
