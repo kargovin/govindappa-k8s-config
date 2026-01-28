@@ -12,3 +12,5 @@ resources:
   - jupyter/
 
   - new-relic-monitoring.yaml
+
+  - mlflow/
