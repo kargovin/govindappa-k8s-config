@@ -20,6 +20,10 @@ spec:
       proxiedArtifactStorage: true
       defaultArtifactRoot: "/data/mlartifacts"
 
+    extraArgs:
+      - "--allowed-hosts"
+      - "*"
+
     # 2. Use SQLite (Simple & Fast)
     backendStore:
       databaseConnectionCheck: false
