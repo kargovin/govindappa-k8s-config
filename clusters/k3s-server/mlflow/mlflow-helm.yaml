@@ -48,7 +48,10 @@ spec:
           paths:
             - path: /
               pathType: ImplementationSpecific
-      tls: []
+      tls:
+        - secretName: mlflow-tls
+          hosts:
+            - mlflow.govindappa.com
       # Annotations to link Traefik Auth
       annotations:
         traefik.ingress.kubernetes.io/router.middlewares: "mlflow-mlflow-auth@kubernetescrd"
