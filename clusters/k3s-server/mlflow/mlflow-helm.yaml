@@ -21,8 +21,7 @@ spec:
       defaultArtifactRoot: "/data/mlartifacts"
 
     extraArgs:
-      - "--allowed-hosts"
-      - "*"
+      allowed-hosts: "*"
 
     # 2. Use SQLite (Simple & Fast)
     backendStore:
