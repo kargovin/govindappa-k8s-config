@@ -53,6 +53,12 @@ spec:
       annotations:
         traefik.ingress.kubernetes.io/router.middlewares: "mlflow-mlflow-auth@kubernetescrd"
 
+        # Connects to Cert-Manager for HTTPS
+        cert-manager.io/cluster-issuer: letsencrypt-prod
+
+        # Connects to External-DNS to create the A Record
+        external-dns.alpha.kubernetes.io/hostname: "mlflow.govindappa.com"
+
     # Newer MLflow versions need to be told explicitly where to serve artifacts
     extraEnvVars:
       MLFLOW_ARTIFACTS_DESTINATION: "/data/mlartifacts"
