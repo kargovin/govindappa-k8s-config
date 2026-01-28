@@ -26,11 +26,14 @@ spec:
       defaultSqlitePath: "/data/mlflow.db"
 
     # 3. Persistence (Save data to disk)
-    persistence:
-      enabled: true
-      size: 10Gi
-      mountPath: /data
-      accessMode: ReadWriteOnce
+    extraVolumes:
+      - name: mlflow-storage
+        persistentVolumeClaim:
+          claimName: mlflow-pvc
+
+    extraVolumeMounts:
+        - name: mlflow-storage
+          mountPath: /data
 
     # 4. Expose to Internet
     service:
