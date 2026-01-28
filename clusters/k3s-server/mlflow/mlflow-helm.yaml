@@ -20,8 +20,8 @@ spec:
       proxiedArtifactStorage: true
       defaultArtifactRoot: "/data/mlartifacts"
 
-    extraArgs:
-      allowed-hosts: "*"
+#    extraArgs:
+#      allowed-hosts: "*"
 
     # 2. Use SQLite (Simple & Fast)
     backendStore:
@@ -69,3 +69,4 @@ spec:
     extraEnvVars:
       MLFLOW_ARTIFACTS_DESTINATION: "/data/mlartifacts"
       MLFLOW_SERVE_ARTIFACTS: "true"
+      MLFLOW_SERVER_ALLOWED_HOSTS: "mlflow.govindappa.com"
