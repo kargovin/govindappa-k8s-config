@@ -1,0 +1,56 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: mlflow
+  namespace: mlflow
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: mlflow
+      version: "1.8.1"
+      sourceRef:
+        kind: HelmRepository
+        name: community-charts
+        namespace: flux-system
+
+  values:
+    # 1. Enable Artifact Proxy (The Key Feature)
+    artifactRoot:
+      proxiedArtifactStorage: true
+      defaultArtifactRoot: "/data/mlartifacts"
+
+    # 2. Use SQLite (Simple & Fast)
+    backendStore:
+      databaseConnectionCheck: false
+      defaultSqlitePath: "/data/mlflow.db"
+
+    # 3. Persistence (Save data to disk)
+    persistence:
+      enabled: true
+      size: 10Gi
+      mountPath: /data
+      accessMode: ReadWriteOnce
+
+    # 4. Expose to Internet
+    service:
+      type: ClusterIP
+      port: 5000
+
+    ingress:
+      enabled: true
+      className: traefik
+      hosts:
+        - host: mlflow.govindappa.com
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
+      tls: []
+      # Annotations to link Traefik Auth
+      annotations:
+        traefik.ingress.kubernetes.io/router.middlewares: "mlflow-mlflow-auth@kubernetescrd"
+
+    # Newer MLflow versions need to be told explicitly where to serve artifacts
+    extraEnvVars:
+      MLFLOW_ARTIFACTS_DESTINATION: "/data/mlartifacts"
+      MLFLOW_SERVE_ARTIFACTS: "true"
