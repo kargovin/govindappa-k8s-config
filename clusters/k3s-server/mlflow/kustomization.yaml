@@ -3,3 +3,4 @@ kind: Kustomization
 resources:
   - mlflow-auth.yaml
   - mlflow-helm.yaml
+  - mlflow-pvc.yaml
