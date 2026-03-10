@@ -6,3 +6,5 @@ metadata:
 data:
   upstream.override: |
     forward . 8.8.8.8 1.1.1.1
+  empty.server: |
+    # This file intentionally left blank to stop [WARNING] logs
