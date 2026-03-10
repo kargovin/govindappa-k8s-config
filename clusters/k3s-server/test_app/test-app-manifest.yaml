@@ -25,6 +25,17 @@ spec:
         image: k4rth/gitops-test-app:main-1773145001-87d8c146f3cfbc0d0fc8e66d73b80717f4775516 # {"$imagepolicy": "flux-system:gitops-test-app-policy"}
         ports:
         - containerPort: 8080 # Matches the Dockerfile CMD port
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 30
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          periodSeconds: 10
 ---
 # 2. Service (Internal Load Balancing)
 apiVersion: v1
@@ -32,10 +43,6 @@ kind: Service
 metadata:
   name: test-app-service
   namespace: default
-  annotations:
-    traefik.ingress.kubernetes.io/service.healthcheck.path: "/health"
-    traefik.ingress.kubernetes.io/service.healthcheck.port: "8080"
-    traefik.ingress.kubernetes.io/service.healthcheck.interval: "30s"
 spec:
   type: ClusterIP
   selector:
