@@ -50,3 +50,13 @@ spec:
         kubernetes:
           integrations_filter:
             enabled: false
+          scrape_interval: 300s
+          common:
+            namespaceSelector:
+              matchExpressions:
+                - key: kubernetes.io/metadata.name
+                  operator: NotIn
+                  values:
+                    - "kube-system"
+                    - "newrelic"
+                    - "flux-system"
