@@ -32,6 +32,9 @@ kind: Service
 metadata:
   name: test-app-service
   namespace: default
+  annotations:
+    traefik.ingress.kubernetes.io/service.healthcheck.path: "/health"
+    traefik.ingress.kubernetes.io/service.healthcheck.interval: "30s"
 spec:
   type: ClusterIP
   selector:
