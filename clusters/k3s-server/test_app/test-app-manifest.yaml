@@ -34,6 +34,7 @@ metadata:
   namespace: default
   annotations:
     traefik.ingress.kubernetes.io/service.healthcheck.path: "/health"
+    traefik.ingress.kubernetes.io/service.healthcheck.port: "8080"
     traefik.ingress.kubernetes.io/service.healthcheck.interval: "30s"
 spec:
   type: ClusterIP
