@@ -5,4 +5,4 @@ resources:
   - cert-manager.yaml   # Installs the Cert-Manager Tool
   - cluster-issuer.yaml # Configures Let's Encrypt
   - external-dns.yaml   # Installs the Cloudflare Updater
-  - coredns-custom.yaml
+  - coredns/
