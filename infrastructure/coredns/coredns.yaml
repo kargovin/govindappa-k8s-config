@@ -9,7 +9,7 @@ data:
   Corefile: |
     .:53 {
         errors {
-            consolidate 5m
+            consolidate 300
         }
         health
         ready
