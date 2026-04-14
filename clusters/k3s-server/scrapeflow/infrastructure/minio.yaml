@@ -13,6 +13,8 @@ spec:
         name: bitnami
         namespace: flux-system
   values:
+    global:
+      imageRegistry: oci.bitnami.com
     auth:
       existingSecret: scrapeflow-minio-credentials
       rootUserSecretKey: root-user

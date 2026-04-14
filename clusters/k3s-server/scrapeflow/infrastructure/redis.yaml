@@ -8,12 +8,14 @@ spec:
   chart:
     spec:
       chart: redis
-      version: ">=7.0.0 <8.0.0"
+      version: ">=25.0.0 <26.0.0"
       sourceRef:
         kind: HelmRepository
         name: bitnami
         namespace: flux-system
   values:
+    global:
+      imageRegistry: oci.bitnami.com
     architecture: standalone
     auth:
       enabled: false
