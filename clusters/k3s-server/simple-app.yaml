@@ -1,3 +1,15 @@
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: www-redirect
+  namespace: default
+spec:
+  redirectRegex:
+    regex: "^https://www\\.govindappa\\.com/(.*)"
+    replacement: "https://govindappa.com/${1}"
+    permanent: true
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -45,26 +57,24 @@ spec:
       targetPort: 80
 
 ---
+# Canonical ingress — serves govindappa.com
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: static-web-ingress
   namespace: default
   annotations:
-    # Use Cert-Manager to get a real SSL cert automatically
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    # Optional: Force www redirect (depends on your preference)
-    nginx.ingress.kubernetes.io/from-to-www-redirect: "true"
+    external-dns.alpha.kubernetes.io/hostname: govindappa.com
 spec:
   ingressClassName: traefik
   tls:
   - hosts:
     - govindappa.com
-    - www.govindappa.com
     secretName: govindappa-tls
   rules:
   - host: govindappa.com
-    http: &http_rules
+    http:
       paths:
       - path: /
         pathType: Prefix
@@ -73,5 +83,32 @@ spec:
             name: static-web-service
             port:
               number: 80
+
+---
+# Redirect ingress — 301s www.govindappa.com → govindappa.com
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: www-redirect-ingress
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    external-dns.alpha.kubernetes.io/hostname: www.govindappa.com
+    traefik.ingress.kubernetes.io/router.middlewares: "default-www-redirect@kubernetescrd"
+spec:
+  ingressClassName: traefik
+  tls:
+  - hosts:
+    - www.govindappa.com
+    secretName: www-govindappa-tls
+  rules:
   - host: www.govindappa.com
-    http: *http_rules
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: static-web-service
+            port:
+              number: 80
