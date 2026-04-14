@@ -60,6 +60,7 @@ metadata:
     external-dns.alpha.kubernetes.io/hostname: test.govindappa.com
     cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
+  ingressClassName: traefik
   rules:
   - host: test.govindappa.com
     http:

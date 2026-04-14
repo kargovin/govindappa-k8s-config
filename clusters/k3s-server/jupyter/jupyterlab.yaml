@@ -33,7 +33,7 @@ spec:
       containers:
       - name: jupyter
         # Use Quay.io to avoid Docker Hub Rate Limits!
-        image: quay.io/jupyter/scipy-notebook:latest
+        image: quay.io/jupyter/scipy-notebook:2026-04-13
         command: [ "start-notebook.sh" ]
         args: [ "--ip=0.0.0.0" ]
         ports:
