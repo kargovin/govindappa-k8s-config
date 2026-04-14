@@ -39,12 +39,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: scrapeflow-minio-credentials
-                  key: root-user
+                  key: rootUser
             - name: MINIO_SECRET_KEY
               valueFrom:
                 secretKeyRef:
                   name: scrapeflow-minio-credentials
-                  key: root-password
+                  key: rootPassword
             - name: MINIO_BUCKET
               value: "scrapeflow-results"
             - name: MINIO_SECURE
