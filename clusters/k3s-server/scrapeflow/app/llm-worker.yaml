@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapeflow-llm-worker
+  namespace: scrapeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrapeflow-llm-worker
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-llm-worker
+    spec:
+      initContainers:
+        - name: wait-for-nats
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-nats 4222; do echo waiting for nats; sleep 2; done']
+        - name: wait-for-minio
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
+      containers:
+        - name: llm-worker
+          image: k4rth/scrapeflow-llm-worker:main-0000000000-placeholder # {"$imagepolicy": "flux-system:scrapeflow-llm-worker-policy"}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          env:
+            - name: NATS_URL
+              value: "nats://scrapeflow-nats:4222"
+            - name: MINIO_ENDPOINT
+              value: "scrapeflow-minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: root-password
+            - name: MINIO_BUCKET
+              value: "scrapeflow-results"
+            - name: MINIO_SECURE
+              value: "false"
+            - name: LLM_KEY_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: llm-key-encryption-key
+            - name: LLM_MAX_WORKERS
+              value: "3"
+            - name: LLM_REQUEST_TIMEOUT_SECONDS
+              value: "60"
+            - name: LLM_MAX_CONTENT_CHARS
+              value: "50000"

@@ -35,3 +35,13 @@ metadata:
 spec:
   interval: 1h
   url: https://community-charts.github.io/helm-charts
+
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: nats
+  namespace: flux-system
+spec:
+  interval: 1h
+  url: https://nats-io.github.io/k8s/helm/charts/

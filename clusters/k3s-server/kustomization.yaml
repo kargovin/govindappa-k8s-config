@@ -14,3 +14,5 @@ resources:
   - mlflow/
 
   - traefik-config.yaml
+
+  - scrapeflow/

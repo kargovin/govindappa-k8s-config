@@ -1,0 +1,22 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: scrapeflow-minio
+  namespace: scrapeflow
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: minio
+      sourceRef:
+        kind: HelmRepository
+        name: bitnami
+        namespace: flux-system
+  values:
+    auth:
+      existingSecret: scrapeflow-minio-credentials
+      rootUserSecretKey: root-user
+      rootPasswordSecretKey: root-password
+    defaultBuckets: "scrapeflow-results"
+    persistence:
+      size: 20Gi

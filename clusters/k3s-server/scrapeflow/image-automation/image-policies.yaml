@@ -1,0 +1,59 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: scrapeflow-api-policy
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: scrapeflow-api-repo
+  filterTags:
+    pattern: '^main-(?P<ts>[0-9]+)-(?P<sha>[a-f0-9]+)'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: scrapeflow-http-worker-policy
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: scrapeflow-http-worker-repo
+  filterTags:
+    pattern: '^main-(?P<ts>[0-9]+)-(?P<sha>[a-f0-9]+)'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: scrapeflow-playwright-worker-policy
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: scrapeflow-playwright-worker-repo
+  filterTags:
+    pattern: '^main-(?P<ts>[0-9]+)-(?P<sha>[a-f0-9]+)'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: scrapeflow-llm-worker-policy
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: scrapeflow-llm-worker-repo
+  filterTags:
+    pattern: '^main-(?P<ts>[0-9]+)-(?P<sha>[a-f0-9]+)'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc

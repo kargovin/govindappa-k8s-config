@@ -1,0 +1,141 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapeflow-api
+  namespace: scrapeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrapeflow-api
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-api
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-postgresql 5432; do echo waiting for postgres; sleep 2; done']
+        - name: wait-for-redis
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-redis-master 6379; do echo waiting for redis; sleep 2; done']
+        - name: wait-for-nats
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-nats 4222; do echo waiting for nats; sleep 2; done']
+        - name: wait-for-minio
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
+      containers:
+        - name: api
+          image: k4rth/scrapeflow-api:main-0000000000-placeholder # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
+          ports:
+            - containerPort: 8000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          env:
+            - name: APP_ENV
+              value: "production"
+            - name: DEBUG
+              value: "false"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-db-credentials
+                  key: database-url
+            - name: REDIS_URL
+              value: "redis://scrapeflow-redis-master:6379/0"
+            - name: NATS_URL
+              value: "nats://scrapeflow-nats:4222"
+            - name: MINIO_ENDPOINT
+              value: "scrapeflow-minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: root-user
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: root-password
+            - name: MINIO_SECURE
+              value: "false"
+            - name: MINIO_BUCKET
+              value: "scrapeflow-results"
+            - name: CLERK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: clerk-secret-key
+            - name: LLM_KEY_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: llm-key-encryption-key
+            - name: RATE_LIMIT_RPM
+              value: "60"
+            - name: SCHEDULE_MIN_INTERVAL_MINUTES
+              value: "5"
+            - name: SCHEDULE_RUN_RETENTION_DAYS
+              value: "90"
+            - name: WEBHOOK_MAX_ATTEMPTS
+              value: "5"
+            - name: ALLOWED_ORIGINS
+              value: "https://scrapeflow.govindappa.com"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scrapeflow-api
+  namespace: scrapeflow
+spec:
+  type: ClusterIP
+  selector:
+    app: scrapeflow-api
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scrapeflow-api-ingress
+  namespace: scrapeflow
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    external-dns.alpha.kubernetes.io/hostname: scrapeflow.govindappa.com
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: scrapeflow.govindappa.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: scrapeflow-api
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - scrapeflow.govindappa.com
+      secretName: scrapeflow-tls

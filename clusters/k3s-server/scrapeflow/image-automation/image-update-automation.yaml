@@ -1,0 +1,25 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageUpdateAutomation
+metadata:
+  name: scrapeflow-image-update
+  namespace: flux-system
+spec:
+  sourceRef:
+    kind: GitRepository
+    name: flux-system
+  interval: 1m
+  git:
+    checkout:
+      ref:
+        branch: main
+    commit:
+      author:
+        email: flux@users.noreply.github.com
+        name: Flux
+      messageTemplate: |
+        :zap: Automated image update for scrapeflow
+    push:
+      branch: main
+  update:
+    path: ./clusters/k3s-server/scrapeflow/app
+    strategy: Setters

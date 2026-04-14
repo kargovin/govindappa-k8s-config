@@ -1,0 +1,22 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: scrapeflow-nats
+  namespace: scrapeflow
+spec:
+  interval: 1h
+  chart:
+    spec:
+      chart: nats
+      version: "2.10.x"
+      sourceRef:
+        kind: HelmRepository
+        name: nats
+        namespace: flux-system
+  values:
+    config:
+      jetstream:
+        enabled: true
+        fileStore:
+          pvc:
+            size: 5Gi

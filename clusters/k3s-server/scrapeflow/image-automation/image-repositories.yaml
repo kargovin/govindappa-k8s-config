@@ -1,0 +1,35 @@
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: scrapeflow-api-repo
+  namespace: flux-system
+spec:
+  image: k4rth/scrapeflow-api
+  interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: scrapeflow-http-worker-repo
+  namespace: flux-system
+spec:
+  image: k4rth/scrapeflow-http-worker
+  interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: scrapeflow-playwright-worker-repo
+  namespace: flux-system
+spec:
+  image: k4rth/scrapeflow-playwright-worker
+  interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: scrapeflow-llm-worker-repo
+  namespace: flux-system
+spec:
+  image: k4rth/scrapeflow-llm-worker
+  interval: 1m

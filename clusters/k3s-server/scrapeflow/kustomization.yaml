@@ -1,0 +1,16 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - infrastructure/postgres.yaml
+  - infrastructure/redis.yaml
+  - infrastructure/minio.yaml
+  - infrastructure/nats.yaml
+  - app/nats-init-job.yaml
+  - app/api.yaml
+  - app/http-worker.yaml
+  - app/playwright-worker.yaml
+  - app/llm-worker.yaml
+  - image-automation/image-repositories.yaml
+  - image-automation/image-policies.yaml
+  - image-automation/image-update-automation.yaml
