@@ -30,16 +30,6 @@ spec:
 apiVersion: source.toolkit.fluxcd.io/v1
 kind: HelmRepository
 metadata:
-  name: newrelic
-  namespace: flux-system
-spec:
-  interval: 1h
-  url: https://helm-charts.newrelic.com
-
----
-apiVersion: source.toolkit.fluxcd.io/v1
-kind: HelmRepository
-metadata:
   name: community-charts
   namespace: flux-system
 spec:
