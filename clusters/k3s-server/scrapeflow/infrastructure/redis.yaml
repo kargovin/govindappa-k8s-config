@@ -16,6 +16,8 @@ spec:
   values:
     global:
       imageRegistry: oci.bitnami.com
+      security:
+        allowInsecureImages: true
     architecture: standalone
     auth:
       enabled: false
