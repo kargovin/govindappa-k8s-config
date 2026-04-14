@@ -29,11 +29,13 @@ kubectl create secret generic scrapeflow-db-credentials \
 
 ### MinIO credentials
 
+> **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).
+
 ```bash
 kubectl create secret generic scrapeflow-minio-credentials \
   --namespace scrapeflow \
-  --from-literal=root-user=scrapeflow \
-  --from-literal=root-password=<strong-password>
+  --from-literal=rootUser=scrapeflow \
+  --from-literal=rootPassword=<strong-password>
 ```
 
 ### App secrets

@@ -1,31 +1,80 @@
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
+apiVersion: apps/v1
+kind: StatefulSet
 metadata:
   name: scrapeflow-postgresql
   namespace: scrapeflow
 spec:
-  interval: 1h
-  chart:
+  serviceName: scrapeflow-postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrapeflow-postgresql
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-postgresql
     spec:
-      chart: postgresql
-      version: ">=16.0.0 <17.0.0"
-      sourceRef:
-        kind: HelmRepository
-        name: bitnami
-        namespace: flux-system
-  values:
-    global:
-      imageRegistry: oci.bitnami.com
-      security:
-        allowInsecureImages: true
-    auth:
-      existingSecret: scrapeflow-db-credentials
-      secretKeys:
-        adminPasswordKey: postgres-password
-        userPasswordKey: postgres-password
-        replicationPasswordKey: postgres-password
-      username: scrapeflow
-      database: scrapeflow
-    primary:
-      persistence:
-        size: 10Gi
+      containers:
+        - name: postgresql
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-db-credentials
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-db-credentials
+                  key: postgres-password
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-db-credentials
+                  key: postgres-db
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "scrapeflow"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "scrapeflow"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scrapeflow-postgresql
+  namespace: scrapeflow
+spec:
+  type: ClusterIP
+  selector:
+    app: scrapeflow-postgresql
+  ports:
+    - port: 5432
+      targetPort: 5432

@@ -10,17 +10,18 @@ spec:
       chart: minio
       sourceRef:
         kind: HelmRepository
-        name: bitnami
+        name: minio-official
         namespace: flux-system
   values:
-    global:
-      imageRegistry: oci.bitnami.com
-      security:
-        allowInsecureImages: true
-    auth:
-      existingSecret: scrapeflow-minio-credentials
-      rootUserSecretKey: root-user
-      rootPasswordSecretKey: root-password
+    existingSecret: scrapeflow-minio-credentials
     defaultBuckets: "scrapeflow-results"
     persistence:
       size: 20Gi
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: 500m
+    mode: standalone
