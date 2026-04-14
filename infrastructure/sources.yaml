@@ -7,14 +7,15 @@ spec:
   interval: 1h
   url: https://charts.jetstack.io
 ---
-apiVersion: source.toolkit.fluxcd.io/v1
+apiVersion: source.toolkit.fluxcd.io/v1beta2
 kind: HelmRepository
 metadata:
   name: bitnami
   namespace: flux-system
 spec:
+  type: oci
   interval: 1h
-  url: https://charts.bitnami.com/bitnami
+  url: oci://registry-1.docker.io/bitnamicharts
 
 ---
 apiVersion: source.toolkit.fluxcd.io/v1
