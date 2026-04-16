@@ -11,6 +11,7 @@ resources:
   - app/http-worker.yaml
   - app/playwright-worker.yaml
   - app/llm-worker.yaml
+  - app/cleanup-cronjob.yaml
   - image-automation/image-repositories.yaml
   - image-automation/image-policies.yaml
   - image-automation/image-update-automation.yaml

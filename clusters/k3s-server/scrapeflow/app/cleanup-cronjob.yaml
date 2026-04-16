@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: scrapeflow-cleanup
+  namespace: scrapeflow
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          initContainers:
+            - name: wait-for-postgres
+              image: busybox
+              command: ['sh', '-c', 'until nc -z scrapeflow-postgresql 5432; do echo waiting for postgres; sleep 2; done']
+            - name: wait-for-minio
+              image: busybox
+              command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
+          containers:
+            - name: cleanup
+              image: k4rth/scrapeflow-api:main-1776196619-70e3a58fc6b95c3d1907d20eeff016d5a6e6f645 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
+              command: ["python", "scripts/cleanup_old_runs.py"]
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: scrapeflow-db-credentials
+                      key: database-url
+                - name: MINIO_ENDPOINT
+                  value: "scrapeflow-minio:9000"
+                - name: MINIO_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: scrapeflow-minio-credentials
+                      key: rootUser
+                - name: MINIO_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: scrapeflow-minio-credentials
+                      key: rootPassword
+                - name: MINIO_BUCKET
+                  value: "scrapeflow-results"
+                - name: MINIO_SECURE
+                  value: "false"
+                - name: SCHEDULE_RUN_RETENTION_DAYS
+                  value: "90"
