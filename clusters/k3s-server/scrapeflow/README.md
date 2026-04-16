@@ -19,12 +19,14 @@ These are **never stored in git** — only `secretKeyRef` references appear in t
 ### Database credentials
 
 ```bash
+PG_PASS="your-password-here"
+
 kubectl create secret generic scrapeflow-db-credentials \
   --namespace scrapeflow \
-  --from-literal=postgres-password=<strong-password> \
+  --from-literal=postgres-password="$PG_PASS" \
   --from-literal=postgres-user=scrapeflow \
   --from-literal=postgres-db=scrapeflow \
-  --from-literal=database-url="postgresql+asyncpg://scrapeflow:<strong-password>@scrapeflow-postgresql:5432/scrapeflow"
+  --from-literal=database-url="postgresql+asyncpg://scrapeflow:${PG_PASS}@scrapeflow-postgresql:5432/scrapeflow"
 ```
 
 ### MinIO credentials
@@ -32,10 +34,12 @@ kubectl create secret generic scrapeflow-db-credentials \
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).
 
 ```bash
+MINIO_PASS="your-password-here"
+
 kubectl create secret generic scrapeflow-minio-credentials \
   --namespace scrapeflow \
   --from-literal=rootUser=scrapeflow \
-  --from-literal=rootPassword=<strong-password>
+  --from-literal=rootPassword="$MINIO_PASS"
 ```
 
 ### App secrets
@@ -44,10 +48,13 @@ kubectl create secret generic scrapeflow-minio-credentials \
 # Generate a Fernet key for LLM_KEY_ENCRYPTION_KEY:
 # python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
+CLERK_SECRET="your-clerk-secret-key"
+FERNET_KEY="your-fernet-key"
+
 kubectl create secret generic scrapeflow-app-secrets \
   --namespace scrapeflow \
-  --from-literal=clerk-secret-key=<clerk-secret-key> \
-  --from-literal=llm-key-encryption-key=<fernet-key>
+  --from-literal=clerk-secret-key="$CLERK_SECRET" \
+  --from-literal=llm-key-encryption-key="$FERNET_KEY"
 ```
 
 ---
