@@ -50,6 +50,8 @@ spec:
           value: "yes"
         - name: CONDARC
           value: "/home/jovyan/work/.condarc"
+        - name: JUPYTER_PATH
+          value: "/home/jovyan/work/.jupyter"
         volumeMounts:
         - name: notebook-data
           mountPath: /home/jovyan/work
