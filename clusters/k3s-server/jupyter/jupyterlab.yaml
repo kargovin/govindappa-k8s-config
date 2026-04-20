@@ -48,6 +48,8 @@ spec:
         # Optional: Start in Lab mode by default
         - name: JUPYTER_ENABLE_LAB
           value: "yes"
+        - name: CONDARC
+          value: "/home/jovyan/work/.condarc"
         volumeMounts:
         - name: notebook-data
           mountPath: /home/jovyan/work
