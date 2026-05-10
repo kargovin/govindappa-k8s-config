@@ -22,7 +22,7 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
         - name: playwright-worker
-          image: k4rth/scrapeflow-playwright-worker:main-1776192907-4d8dfda17871504c6db93b2c03ea74275b472634 # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
+          image: k4rth/scrapeflow-playwright-worker:main-1778437255-e55d256c56e8c6aeceecdeb302488da123d51598 # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
           resources:
             requests:
               cpu: 200m
