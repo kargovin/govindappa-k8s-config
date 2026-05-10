@@ -53,3 +53,8 @@ spec:
               value: "3"
             - name: PLAYWRIGHT_DEFAULT_TIMEOUT_SECONDS
               value: "60"
+            - name: CREDENTIALS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: credentials-encryption-key

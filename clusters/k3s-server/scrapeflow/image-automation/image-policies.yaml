@@ -57,3 +57,18 @@ spec:
   policy:
     numerical:
       order: asc
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImagePolicy
+metadata:
+  name: scrapeflow-coordinator-policy
+  namespace: flux-system
+spec:
+  imageRepositoryRef:
+    name: scrapeflow-coordinator-repo
+  filterTags:
+    pattern: '^main-(?P<ts>[0-9]+)-(?P<sha>[a-f0-9]+)'
+    extract: '$ts'
+  policy:
+    numerical:
+      order: asc

@@ -33,3 +33,12 @@ metadata:
 spec:
   image: k4rth/scrapeflow-llm-worker
   interval: 1m
+---
+apiVersion: image.toolkit.fluxcd.io/v1
+kind: ImageRepository
+metadata:
+  name: scrapeflow-coordinator-repo
+  namespace: flux-system
+spec:
+  image: k4rth/scrapeflow-coordinator
+  interval: 1m

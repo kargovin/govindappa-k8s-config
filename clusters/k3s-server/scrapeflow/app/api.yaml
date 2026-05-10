@@ -90,7 +90,9 @@ spec:
                 secretKeyRef:
                   name: scrapeflow-app-secrets
                   key: llm-key-encryption-key
-            - name: RATE_LIMIT_RPM
+            - name: RATE_LIMIT_REQUESTS
+              value: "60"
+            - name: RATE_LIMIT_WINDOW_SECONDS
               value: "60"
             - name: SCHEDULE_MIN_INTERVAL_MINUTES
               value: "5"
@@ -100,6 +102,13 @@ spec:
               value: "5"
             - name: ALLOWED_ORIGINS
               value: "https://scrapeflow.govindappa.com"
+            - name: CLERK_AUTHORIZED_PARTIES
+              value: "https://scrapeflow.govindappa.com"
+            - name: CREDENTIALS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: credentials-encryption-key
 ---
 apiVersion: v1
 kind: Service

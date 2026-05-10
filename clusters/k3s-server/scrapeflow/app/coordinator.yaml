@@ -1,19 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: scrapeflow-http-worker
+  name: scrapeflow-coordinator
   namespace: scrapeflow
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: scrapeflow-http-worker
+      app: scrapeflow-coordinator
   template:
     metadata:
       labels:
-        app: scrapeflow-http-worker
+        app: scrapeflow-coordinator
     spec:
       initContainers:
+        - name: wait-for-postgres
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-postgresql 5432; do echo waiting for postgres; sleep 2; done']
         - name: wait-for-nats
           image: busybox
           command: ['sh', '-c', 'until nc -z scrapeflow-nats 4222; do echo waiting for nats; sleep 2; done']
@@ -21,16 +24,21 @@ spec:
           image: busybox
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
-        - name: http-worker
-          image: k4rth/scrapeflow-http-worker:main-1776192511-686909aba41c374fd0cd81f9ede6609002425457 # {"$imagepolicy": "flux-system:scrapeflow-http-worker-policy"}
+        - name: coordinator
+          image: k4rth/scrapeflow-coordinator:main-0000000000-placeholder # {"$imagepolicy": "flux-system:scrapeflow-coordinator-policy"}
           resources:
             requests:
               cpu: 50m
-              memory: 64Mi
+              memory: 128Mi
             limits:
-              cpu: 500m
+              cpu: 200m
               memory: 256Mi
           env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-db-credentials
+                  key: database-url
             - name: NATS_URL
               value: "nats://scrapeflow-nats:4222"
             - name: MINIO_ENDPOINT
@@ -49,12 +57,9 @@ spec:
               value: "scrapeflow-results"
             - name: MINIO_SECURE
               value: "false"
-            - name: FETCH_TIMEOUT_SECS
-              value: "30"
-            - name: NATS_MAX_DELIVER
-              value: "3"
-            - name: CREDENTIALS_ENCRYPTION_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: scrapeflow-app-secrets
-                  key: credentials-encryption-key
+            - name: COORDINATOR_DISPATCH_BATCH_SIZE
+              value: "10"
+            - name: COORDINATOR_DISPATCH_POLL_INTERVAL
+              value: "2"
+            - name: COORDINATOR_STALE_THRESHOLD_MINUTES
+              value: "10"
