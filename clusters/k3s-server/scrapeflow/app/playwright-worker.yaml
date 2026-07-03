@@ -23,13 +23,18 @@ spec:
       containers:
         - name: playwright-worker
           image: k4rth/scrapeflow-playwright-worker:main-1782987123-63b2dfc066fdb899c70387faf475fef64f891a2b # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
+          # Anti-bot hardening (ScrapeFlow ADR-008): the worker now runs REAL,
+          # HEADED Google Chrome under Xvfb (not headless Chromium), which uses
+          # materially more CPU/RAM — multiplied by PLAYWRIGHT_MAX_WORKERS (3
+          # concurrent Chrome contexts) + the Xvfb server. Bumped accordingly.
+          # (/dev/shm pressure is handled in-app via --disable-dev-shm-usage.)
           resources:
             requests:
-              cpu: 200m
-              memory: 512Mi
+              cpu: 500m
+              memory: 1Gi
             limits:
-              cpu: 1000m
-              memory: 1536Mi
+              cpu: 2000m
+              memory: 4Gi
           env:
             - name: NATS_URL
               value: "nats://scrapeflow-nats:4222"
