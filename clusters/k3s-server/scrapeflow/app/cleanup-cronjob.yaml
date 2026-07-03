@@ -22,7 +22,7 @@ spec:
               command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
           containers:
             - name: cleanup
-              image: k4rth/scrapeflow-api:main-1783058055-f8c2d9933d4695bb44b7a635438d0d8f48e2ccea # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
+              image: k4rth/scrapeflow-api:main-1783064850-a0c905b49d92886caf85d2f463e32cbd0b893965 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
               command: ["python", "scripts/cleanup_old_runs.py"]
               resources:
                 requests:
