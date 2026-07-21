@@ -57,6 +57,6 @@ spec:
             - name: LLM_MAX_WORKERS
               value: "3"
             - name: LLM_REQUEST_TIMEOUT_SECONDS
-              value: "60"
+              value: "180"
             - name: LLM_MAX_CONTENT_CHARS
               value: "50000"
