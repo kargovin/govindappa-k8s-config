@@ -22,7 +22,7 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
         - name: playwright-worker
-          image: k4rth/scrapeflow-playwright-worker:main-1785230462-c981321a982214ac4da633497c0b3394c405f822 # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
+          image: k4rth/scrapeflow-playwright-worker:main-1789809936-421cbfec9e716374764db254b8f2b9f6ae598f46 # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
           # Anti-bot hardening (ScrapeFlow ADR-008): the worker now runs REAL,
           # HEADED Google Chrome under Xvfb (not headless Chromium), which uses
           # materially more CPU/RAM — multiplied by PLAYWRIGHT_MAX_WORKERS (3
