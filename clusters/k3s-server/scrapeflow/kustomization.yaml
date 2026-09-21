@@ -3,6 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - infrastructure/postgres.yaml
+  - infrastructure/temporal-postgres.yaml
   - infrastructure/redis.yaml
   - infrastructure/minio.yaml
   - infrastructure/nats.yaml

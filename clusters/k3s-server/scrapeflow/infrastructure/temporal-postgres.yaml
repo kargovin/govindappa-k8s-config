@@ -1,0 +1,115 @@
+# Temporal's persistence — its own Postgres instance, not databases on the app one
+# (ScrapeFlow ADR-009 §2a): the schema is owned by temporal-sql-tool, not Alembic, and
+# the data is in-flight work, so it must be resettable/restorable independently of the
+# app DB. Two databases inside it: `temporal` (POSTGRES_DB) and `temporal_visibility`
+# (the init script below). The Temporal server (temporal.yaml) decides which name is
+# which via DBNAME / VISIBILITY_DBNAME.
+#
+# Both databases are created by the postgres image's entrypoint on FIRST boot only, when
+# PGDATA is empty. If this pod ever starts without the init ConfigMap mounted, adding it
+# afterwards does nothing — the PVC outlives the StatefulSet and must be deleted by hand:
+#   kubectl -n scrapeflow delete pvc data-scrapeflow-temporal-postgresql-0
+#
+# Secret `scrapeflow-temporal-db-credentials` (postgres-user / postgres-password) is created
+# manually — see README.md. POSTGRES_DB is a name the Temporal server is configured with,
+# not a credential, so it is hardcoded here rather than read from the Secret.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scrapeflow-temporal-postgres-init
+  namespace: scrapeflow
+data:
+  # Same file as docker/temporal-postgres/init.sql in the app repo.
+  01-visibility-db.sql: |
+    -- Runs once, on first boot of an empty data volume (postgres image's
+    -- /docker-entrypoint-initdb.d hook). POSTGRES_DB already created `temporal` — the main
+    -- store; this adds the visibility store. Which name is which is decided by the Temporal
+    -- server's config (DBNAME / VISIBILITY_DBNAME), not by anything in here.
+    CREATE DATABASE temporal_visibility OWNER temporal;
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: scrapeflow-temporal-postgresql
+  namespace: scrapeflow
+spec:
+  serviceName: scrapeflow-temporal-postgresql
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scrapeflow-temporal-postgresql
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-temporal-postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-temporal-db-credentials
+                  key: postgres-user
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-temporal-db-credentials
+                  key: postgres-password
+            - name: POSTGRES_DB
+              value: temporal
+            # A fresh PVC's mount root holds lost+found, and initdb refuses a non-empty
+            # directory — so the cluster lives one level down.
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "temporal", "-d", "temporal"]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "temporal", "-d", "temporal"]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: init
+          configMap:
+            name: scrapeflow-temporal-postgres-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scrapeflow-temporal-postgresql
+  namespace: scrapeflow
+spec:
+  type: ClusterIP
+  selector:
+    app: scrapeflow-temporal-postgresql
+  ports:
+    - port: 5432
+      targetPort: 5432

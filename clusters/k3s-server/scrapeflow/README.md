@@ -29,6 +29,35 @@ kubectl create secret generic scrapeflow-db-credentials \
   --from-literal=database-url="postgresql+asyncpg://scrapeflow:${PG_PASS}@scrapeflow-postgresql:5432/scrapeflow"
 ```
 
+### Temporal database credentials
+
+Temporal gets its **own Postgres instance** (`infrastructure/temporal-postgres.yaml`), not databases
+on the app one — its schema is owned by `temporal-sql-tool`, not Alembic, and its data is in-flight
+work (ScrapeFlow ADR-009 §2a). The Secret holds only user and password; the database names
+(`temporal`, `temporal_visibility`) are fixed in the manifest because the Temporal server is
+configured with them by name.
+
+```bash
+TEMPORAL_PG_PASS="your-password-here"
+
+kubectl create secret generic scrapeflow-temporal-db-credentials \
+  --namespace scrapeflow \
+  --from-literal=postgres-user=temporal \
+  --from-literal=postgres-password="$TEMPORAL_PG_PASS"
+```
+
+> ⚠️ **Create this Secret before pushing the manifest.** Flux applies within a minute; without it
+> the pod sits in `CreateContainerConfigError` (harmless, recovers once the Secret exists).
+>
+> ⚠️ **Both databases are created on first boot only**, by the postgres image's entrypoint against an
+> empty `PGDATA`. If the pod ever starts with the init ConfigMap missing, `temporal_visibility` is
+> never created and mounting it later does nothing. The PVC outlives the StatefulSet, so the reset is
+> explicit: `kubectl -n scrapeflow delete pvc data-scrapeflow-temporal-postgresql-0`, then let the
+> StatefulSet recreate the pod.
+>
+> Verify: `kubectl -n scrapeflow exec sts/scrapeflow-temporal-postgresql -- psql -U temporal -l`
+> lists both databases; each has 0 tables until Temporal's auto-setup runs.
+
 ### MinIO credentials
 
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).
