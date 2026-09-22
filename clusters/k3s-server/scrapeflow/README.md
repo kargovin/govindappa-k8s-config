@@ -56,7 +56,35 @@ kubectl create secret generic scrapeflow-temporal-db-credentials \
 > StatefulSet recreate the pod.
 >
 > Verify: `kubectl -n scrapeflow exec sts/scrapeflow-temporal-postgresql -- psql -U temporal -l`
-> lists both databases; each has 0 tables until Temporal's auto-setup runs.
+> lists both databases; each has 0 tables until the Temporal server's schema init container runs.
+
+### Temporal server
+
+`infrastructure/temporal.yaml` — no Secret of its own; it reads `scrapeflow-temporal-db-credentials`
+above. One `temporalio/server` process (all four services, SQL visibility) behind ClusterIP
+`scrapeflow-temporal:7233`. A `schema` **init container** (`temporalio/admin-tools`, **same tag as
+the server — bump both lines together**) runs `temporal-sql-tool setup-schema`/`update-schema` on
+every pod start; it is a no-op once the databases are at the image's version, which is what makes a
+tag bump safe. The manifest is `strategy: Recreate` so the old server is gone before the new pod
+migrates the schema.
+
+> ⚠️ **`NUM_HISTORY_SHARDS` (4) is immutable after the first start** — it is persisted in
+> `cluster_metadata_info`. Changing it means wiping the Temporal database (PVC delete above).
+>
+> The `temporal` CLI ships in admin-tools, not the server image. Health check from a one-off pod:
+>
+> ```bash
+> kubectl -n scrapeflow run tcli --restart=Never --image=temporalio/admin-tools:1.31.0 --command -- \
+>   temporal operator cluster health --address scrapeflow-temporal:7233
+> kubectl -n scrapeflow logs tcli      # SERVING
+> kubectl -n scrapeflow delete pod tcli
+> ```
+>
+> (`kubectl run --rm -i` loses the output to the pod's own teardown.)
+>
+> Verify after a bump: `kubectl -n scrapeflow logs deploy/scrapeflow-temporal -c schema` — on an
+> up-to-date database it reads `found zero updates from current version <n>` for both databases.
+> The dynamic config (`scrapeflow-temporal-dynamicconfig`) is re-read live; editing it needs no restart.
 
 ### MinIO credentials
 
@@ -159,3 +187,5 @@ flux get helmreleases -A -n scrapeflow
 | Redis      | `scrapeflow-redis-master:6379`    |
 | MinIO      | `scrapeflow-minio:9000`           |
 | NATS       | `scrapeflow-nats:4222`            |
+| Temporal PG| `scrapeflow-temporal-postgresql:5432` |
+| Temporal   | `scrapeflow-temporal:7233`        |
