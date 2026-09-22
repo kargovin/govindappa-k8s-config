@@ -4,6 +4,7 @@ resources:
   - namespace.yaml
   - infrastructure/postgres.yaml
   - infrastructure/temporal-postgres.yaml
+  - infrastructure/temporal.yaml
   - infrastructure/redis.yaml
   - infrastructure/minio.yaml
   - infrastructure/nats.yaml

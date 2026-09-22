@@ -1,0 +1,225 @@
+# Temporal server — the Phase 4 workflow engine (ScrapeFlow ADR-009 §2). One process serving
+# all four services (frontend / history / matching / worker), standard SQL visibility, no
+# Elasticsearch, no HA (§1 accepts that at this scale; the Helm chart is the reversal path).
+# Stateless: everything it persists lives in temporal-postgres.yaml.
+#
+# The schema step is ours: the `schema` init container runs temporal-sql-tool from
+# temporalio/admin-tools on EVERY pod start. It is idempotent (`setup-schema -v 0.0` only
+# stamps an unstamped database; `update-schema` is a no-op once the database is at the image's
+# version), which is what makes a server bump safe — the new pod migrates the schema before the
+# new server starts, and `strategy: Recreate` guarantees the old server has stopped by then.
+# An init container, not a Job: a Job would not re-run on a bump.
+#
+# ⚠️ Two images, one version. `server` and `admin-tools` are pinned to the SAME tag and bumped
+# together — the schema `update-schema` applies is baked into admin-tools, and the server
+# expects the matching version. Pinned by hand; not under Flux image automation (no
+# $imagepolicy marker — do not add one). temporalio/ui (A.4) is a separate version line.
+#
+# ⚠️ No `temporal-sql-tool create`. The databases exist already — temporal-postgres.yaml's
+# instance creates them on first boot. This script owns the schema inside them, nothing else.
+#
+# ⚠️ NUM_HISTORY_SHARDS is immutable after the first start: it is persisted in
+# cluster_metadata_info and can never change without wiping the database. 4 is the image
+# default and what local dev runs; set explicitly so the decision is written, not inherited.
+#
+# Secret `scrapeflow-temporal-db-credentials` (postgres-user / postgres-password) is A.1's,
+# created manually — see README.md. The same password is read under two names: SQL_PASSWORD by
+# temporal-sql-tool (init container), POSTGRES_PWD by the server.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scrapeflow-temporal-schema
+  namespace: scrapeflow
+data:
+  # Copy of docker/temporal/setup-schema.sh in the app repo — that file is canonical (the
+  # local half runs and is verified first); keep this one byte-identical to it.
+  setup-schema.sh: |
+    #!/bin/sh
+    # Temporal schema step — runs before the server on every start (compose: the `temporal-schema`
+    # one-shot the server depends on; k8s: an init container on the server Deployment). Idempotent:
+    # `setup-schema -v 0.0` only stamps a database that has no version yet, and `update-schema`
+    # applies the versioned diffs from the stamped version up to the one baked into this image —
+    # a no-op once they agree. Bumping the server therefore means bumping this image's tag too.
+    #
+    # Deliberately no `temporal-sql-tool create`: the databases exist already — the Postgres
+    # instance creates them on first boot (docker/temporal-postgres/init.sql). This script owns
+    # the schema inside them and nothing else. Adapted from temporalio/samples-server
+    # compose/scripts/setup-postgres.sh.
+    set -eu
+
+    : "${POSTGRES_SEEDS:?POSTGRES_SEEDS is required (the temporal-postgres host)}"
+    : "${POSTGRES_USER:?POSTGRES_USER is required}"
+    : "${SQL_PASSWORD:?SQL_PASSWORD is required (temporal-sql-tool reads the password from it)}"
+    DB_PORT="${DB_PORT:-5432}"
+    SCHEMA_ROOT=/etc/temporal/schema/postgresql/v12
+
+    echo "Waiting for ${POSTGRES_SEEDS}:${DB_PORT}..."
+    until nc -z -w 5 "${POSTGRES_SEEDS}" "${DB_PORT}"; do
+      sleep 2
+    done
+
+    # Usage: apply_schema <database> <versioned schema dir>
+    apply_schema() {
+      echo "== ${1}: setup-schema (stamps version 0.0 if unstamped)"
+      temporal-sql-tool --plugin postgres12 --ep "${POSTGRES_SEEDS}" -p "${DB_PORT}" \
+        -u "${POSTGRES_USER}" --db "${1}" setup-schema -v 0.0
+      echo "== ${1}: update-schema to the image's version"
+      temporal-sql-tool --plugin postgres12 --ep "${POSTGRES_SEEDS}" -p "${DB_PORT}" \
+        -u "${POSTGRES_USER}" --db "${1}" update-schema -d "${SCHEMA_ROOT}/${2}/versioned"
+    }
+
+    apply_schema "${DBNAME:-temporal}" temporal
+    apply_schema "${VISIBILITY_DBNAME:-temporal_visibility}" visibility
+
+    echo "Temporal schema is current in ${DBNAME:-temporal} and ${VISIBILITY_DBNAME:-temporal_visibility}"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scrapeflow-temporal-dynamicconfig
+  namespace: scrapeflow
+data:
+  # Production's dynamic config. NOT a copy of local dev's development.yaml — dynamic config
+  # is per-environment by nature; the two are allowed to differ. Kubelet refreshes this mount
+  # in place and the server re-reads the file on a ~10 s poll, so a change here reaches the
+  # running server with no pod restart. (Mounted as a directory, not via subPath, because
+  # subPath mounts do not refresh.)
+  production.yaml: |
+    # Temporal dynamic config — operator dials the server re-reads on a ~10 s poll, no restart
+    # needed. Each key maps to a list of {value, constraints}; empty constraints = global.
+    # Empty on purpose: every dial is at its compiled-in default. C.13 (Worker Versioning)
+    # writes the first entry. Do NOT raise limit.blobSize.* here — references, never content,
+    # go into workflow history (phase4-implementation-backlog.md, Non-negotiables).
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapeflow-temporal
+  namespace: scrapeflow
+spec:
+  replicas: 1
+  # Recreate, not RollingUpdate: on a version bump the new pod's init container migrates the
+  # schema, and this guarantees the old server is already gone when it does.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: scrapeflow-temporal
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-temporal
+    spec:
+      initContainers:
+        - name: schema
+          image: temporalio/admin-tools:1.31.0   # same tag as the server below — bump together
+          # The ConfigMap mounts the script without the execute bit; run it through sh.
+          command: ["/bin/sh", "/scripts/setup-schema.sh"]
+          env:
+            - name: POSTGRES_SEEDS
+              value: scrapeflow-temporal-postgresql
+            - name: DB_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-temporal-db-credentials
+                  key: postgres-user
+            - name: SQL_PASSWORD   # temporal-sql-tool reads this name
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-temporal-db-credentials
+                  key: postgres-password
+            - name: DBNAME
+              value: temporal
+            - name: VISIBILITY_DBNAME
+              value: temporal_visibility
+          volumeMounts:
+            - name: schema
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+      containers:
+        - name: server
+          image: temporalio/server:1.31.0   # same tag as admin-tools above — bump together
+          ports:
+            - name: grpc
+              containerPort: 7233   # frontend; history/matching/worker + membership stay pod-local
+          env:
+            - name: DB
+              value: postgres12
+            - name: POSTGRES_SEEDS
+              value: scrapeflow-temporal-postgresql
+            - name: DB_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-temporal-db-credentials
+                  key: postgres-user
+            - name: POSTGRES_PWD   # the server reads this name
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-temporal-db-credentials
+                  key: postgres-password
+            - name: DBNAME
+              value: temporal
+            - name: VISIBILITY_DBNAME
+              value: temporal_visibility
+            - name: NUM_HISTORY_SHARDS
+              value: "4"
+            - name: BIND_ON_IP
+              value: 0.0.0.0
+            # Relative to /etc/temporal, the image's workdir.
+            - name: DYNAMIC_CONFIG_FILE_PATH
+              value: config/dynamicconfig/production.yaml
+          volumeMounts:
+            # ⚠️ Mount the subdirectory only. A ConfigMap mount replaces the directory it
+            # lands on, and /etc/temporal/config is the server's own.
+            - name: dynamicconfig
+              mountPath: /etc/temporal/config/dynamicconfig
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 30
+            periodSeconds: 30
+      volumes:
+        - name: schema
+          configMap:
+            name: scrapeflow-temporal-schema
+        - name: dynamicconfig
+          configMap:
+            name: scrapeflow-temporal-dynamicconfig
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scrapeflow-temporal
+  namespace: scrapeflow
+spec:
+  type: ClusterIP
+  selector:
+    app: scrapeflow-temporal
+  ports:
+    - name: grpc
+      port: 7233
+      targetPort: grpc
