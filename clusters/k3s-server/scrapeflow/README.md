@@ -84,6 +84,14 @@ migrates the schema.
 >
 > Verify after a bump: `kubectl -n scrapeflow logs deploy/scrapeflow-temporal -c schema` — on an
 > up-to-date database it reads `found zero updates from current version <n>` for both databases.
+>
+> ⚠️ **Do not `kubectl rollout restart` a Flux-managed Deployment** — Flux strips the `restartedAt`
+> annotation on its next reconcile, which rolls the Deployment a second time. Use
+> `kubectl -n scrapeflow delete pod -l app=scrapeflow-temporal`.
+>
+> ⚠️ **A replacement pod may exit once with `failed to start ringpop`** (exit 1) and come back on the
+> kubelet's restart: it bootstraps the ring from `cluster_membership`, which still lists the previous
+> pod's IP. Self-healing, ~90 s. Only investigate if it loops.
 > The dynamic config (`scrapeflow-temporal-dynamicconfig`) is re-read live; editing it needs no restart.
 
 ### MinIO credentials
