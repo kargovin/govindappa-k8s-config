@@ -3,7 +3,8 @@
 # ⚠️ ClusterIP ONLY — no Ingress, no DNS record, no cert. The UI is a write-capable control plane
 # (cancel/terminate/signal/reset any workflow) with no auth of its own, and every tenant's runs
 # share the one `scrapeflow` Temporal namespace. Access is a port-forward:
-#   kubectl -n scrapeflow port-forward svc/scrapeflow-temporal-ui 8080   → http://localhost:8080
+#   kubectl -n scrapeflow port-forward svc/scrapeflow-temporal-ui 8081:8080   → http://localhost:8081
+# (8081 locally because the app repo's compose `temporal-ui` holds 8080; any free port works.)
 #
 # Its own version line (temporalio/ui 2.x), not the server's — pinned by hand, not under Flux
 # image automation.
@@ -33,7 +34,8 @@ spec:
               value: scrapeflow-temporal:7233
             - name: TEMPORAL_DEFAULT_NAMESPACE
               value: scrapeflow
-            # The browser's origin through the port-forward above.
+            # Not a gate for the UI's own pages: its writes are protected by a CSRF token, and a
+            # write from another local port was verified to go through (2026-09-25).
             - name: TEMPORAL_CORS_ORIGINS
               value: http://localhost:8080
           resources:

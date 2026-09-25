@@ -114,12 +114,13 @@ talks to `scrapeflow-temporal:7233`. Same admin-tools tag as the server.
 auth of its own, and every tenant's runs share the one `scrapeflow` namespace. Reach it with:
 
 ```bash
-kubectl -n scrapeflow port-forward svc/scrapeflow-temporal-ui 8080
-# → http://localhost:8080 (opens on the scrapeflow namespace)
+kubectl -n scrapeflow port-forward svc/scrapeflow-temporal-ui 8081:8080
+# → http://localhost:8081 (opens on the scrapeflow namespace)
 ```
 
 > The UI image has its own version line (2.x) — it is **not** bumped with the server/admin-tools
-> tag. Keep the local port at 8080: `TEMPORAL_CORS_ORIGINS` is set to `http://localhost:8080`.
+> tag. Local port 8081 because the app repo's local compose UI holds 8080; any free port works —
+> reads and writes (CSRF-token protected) both verified on a port other than 8080.
 
 ### MinIO credentials
 
