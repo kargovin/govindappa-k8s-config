@@ -107,6 +107,20 @@ talks to `scrapeflow-temporal:7233`. Same admin-tools tag as the server.
 > **Re-run it after the Temporal database is wiped** (or to re-apply retention):
 > `kubectl -n scrapeflow delete job scrapeflow-temporal-init`; Flux recreates it on the next reconcile.
 
+### Temporal Web UI
+
+`infrastructure/temporal-ui.yaml` — `temporalio/ui` behind ClusterIP `scrapeflow-temporal-ui:8080`.
+**No Ingress, deliberately:** the UI can cancel, terminate, signal and reset any workflow and has no
+auth of its own, and every tenant's runs share the one `scrapeflow` namespace. Reach it with:
+
+```bash
+kubectl -n scrapeflow port-forward svc/scrapeflow-temporal-ui 8080
+# → http://localhost:8080 (opens on the scrapeflow namespace)
+```
+
+> The UI image has its own version line (2.x) — it is **not** bumped with the server/admin-tools
+> tag. Keep the local port at 8080: `TEMPORAL_CORS_ORIGINS` is set to `http://localhost:8080`.
+
 ### MinIO credentials
 
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).
@@ -210,3 +224,4 @@ flux get helmreleases -A -n scrapeflow
 | NATS       | `scrapeflow-nats:4222`            |
 | Temporal PG| `scrapeflow-temporal-postgresql:5432` |
 | Temporal   | `scrapeflow-temporal:7233`        |
+| Temporal UI| `scrapeflow-temporal-ui:8080` (port-forward only) |
