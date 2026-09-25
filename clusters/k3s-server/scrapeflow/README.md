@@ -94,6 +94,19 @@ migrates the schema.
 > pod's IP. Self-healing, ~90 s. Only investigate if it loops.
 > The dynamic config (`scrapeflow-temporal-dynamicconfig`) is re-read live; editing it needs no restart.
 
+### Temporal namespace
+
+`app/temporal-init-job.yaml` — Job `scrapeflow-temporal-init` registers the Temporal namespace
+`scrapeflow` (a row in the `temporal` database, not the k8s namespace) with **30-day retention**, or
+resets the retention on an existing one — the manifest is the source of truth for it. No Secret; it
+talks to `scrapeflow-temporal:7233`. Same admin-tools tag as the server.
+
+> Verify: the tcli pod above with `temporal operator namespace describe --namespace scrapeflow
+> --address scrapeflow-temporal:7233` → `WorkflowExecutionRetentionTtl 720h0m0s`.
+>
+> **Re-run it after the Temporal database is wiped** (or to re-apply retention):
+> `kubectl -n scrapeflow delete job scrapeflow-temporal-init`; Flux recreates it on the next reconcile.
+
 ### MinIO credentials
 
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).

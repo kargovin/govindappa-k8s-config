@@ -9,6 +9,7 @@ resources:
   - infrastructure/minio.yaml
   - infrastructure/nats.yaml
   - app/nats-init-job.yaml
+  - app/temporal-init-job.yaml
   - app/api.yaml
   - app/http-worker.yaml
   - app/playwright-worker.yaml

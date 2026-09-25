@@ -1,0 +1,105 @@
+# Temporal namespace registration — A.3 (ScrapeFlow ADR-009 §2c, §12). Registers the single
+# namespace `scrapeflow` with 30-day retention, or — if it exists — sets its retention to that
+# value, so this manifest is the source of truth for retention (the same converge-don't-just-create
+# shape as nats-init-job.yaml's `stream add` / `stream edit`). The Temporal namespace is a row in
+# the `temporal` database, unrelated to the k8s namespace of the same name.
+#
+# A Job, not an init container on the server: a namespace is created once and lives in the
+# database; it does not need re-running on every server start. Re-running it is the recovery after
+# the Temporal database is wiped: `kubectl -n scrapeflow delete job scrapeflow-temporal-init` and
+# Flux recreates it on the next reconcile.
+#
+# ⚠️ No ttlSecondsAfterFinished: Flux would recreate a TTL-deleted Job on every reconcile and
+# re-run it every 10 minutes. Harmless (it converges), but noise — keep the completed Job.
+# ⚠️ Pinned to the server's tag (temporal.yaml) — admin-tools carries the matching `temporal` CLI.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scrapeflow-temporal-init
+  namespace: scrapeflow
+data:
+  # Copy of docker/temporal/create-namespace.sh in the app repo — that file is canonical (the
+  # local half runs and is verified first); keep this one byte-identical to it.
+  create-namespace.sh: |
+    #!/bin/sh
+    # Temporal namespace registration — ADR-009 §2 (one namespace, §12) and §2c (retention). Runs
+    # after the server is up (compose: the `temporal-namespace` one-shot; k8s: the
+    # scrapeflow-temporal-init Job). Converges rather than only creates, like nats-init-job.yaml's
+    # `stream add` / `stream edit`: a missing namespace is created, an existing one has its retention
+    # set to the value here — so this file, not a past `temporal operator` command, is the source of
+    # truth for retention. Safe to re-run; re-running it is also the recovery after the Temporal
+    # database is wiped.
+    #
+    # Written for this project, not copied from temporalio/samples-server's create-namespace.sh:
+    # that one sets no retention (the CLI default is 72h, not 30d), and its retry branch references
+    # a misspelled variable, which `set -u` turns into a failure on exactly the path it guards.
+    set -eu
+
+    : "${TEMPORAL_ADDRESS:?TEMPORAL_ADDRESS is required (host:port of the Temporal frontend)}"
+    NAMESPACE="${TEMPORAL_NAMESPACE:-scrapeflow}"
+    RETENTION="${TEMPORAL_NAMESPACE_RETENTION:-720h}" # 30 days (ADR-009 §2c) — the CLI wants hours
+    MAX_ATTEMPTS="${MAX_ATTEMPTS:-60}"                 # × 5 s = 5 min for the server to come up
+
+    attempt=1
+    echo "Waiting for the Temporal frontend at ${TEMPORAL_ADDRESS}..."
+    until temporal operator cluster health --address "${TEMPORAL_ADDRESS}" >/dev/null 2>&1; do
+      if [ "${attempt}" -ge "${MAX_ATTEMPTS}" ]; then
+        echo "Temporal not healthy after ${MAX_ATTEMPTS} attempts; giving up" >&2
+        exit 1
+      fi
+      attempt=$((attempt + 1))
+      sleep 5
+    done
+
+    # `describe` failing is read as "does not exist". Any other failure falls through to `create`,
+    # which then fails loudly (already exists / unreachable) — a non-zero exit, never a silent skip.
+    if temporal operator namespace describe --namespace "${NAMESPACE}" \
+         --address "${TEMPORAL_ADDRESS}" >/dev/null 2>&1; then
+      echo "Namespace ${NAMESPACE} exists; setting retention to ${RETENTION}"
+      temporal operator namespace update --namespace "${NAMESPACE}" \
+        --retention "${RETENTION}" --address "${TEMPORAL_ADDRESS}"
+    else
+      echo "Creating namespace ${NAMESPACE} with retention ${RETENTION}"
+      temporal operator namespace create --namespace "${NAMESPACE}" \
+        --retention "${RETENTION}" --address "${TEMPORAL_ADDRESS}"
+    fi
+
+    temporal operator namespace describe --namespace "${NAMESPACE}" --address "${TEMPORAL_ADDRESS}"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: scrapeflow-temporal-init
+  namespace: scrapeflow
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: temporal-init
+          image: temporalio/admin-tools:1.31.0   # same tag as temporal.yaml — bump together
+          # The ConfigMap mounts the script without the execute bit; run it through sh.
+          command: ["/bin/sh", "/scripts/create-namespace.sh"]
+          env:
+            - name: TEMPORAL_ADDRESS
+              value: scrapeflow-temporal:7233
+            - name: TEMPORAL_NAMESPACE
+              value: scrapeflow
+            - name: TEMPORAL_NAMESPACE_RETENTION
+              value: 720h   # 30 days
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+              readOnly: true
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: scripts
+          configMap:
+            name: scrapeflow-temporal-init
