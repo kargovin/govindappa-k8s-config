@@ -13,6 +13,7 @@ resources:
   - app/temporal-init-job.yaml
   - app/api.yaml
   - app/http-worker.yaml
+  - app/http-worker-temporal.yaml
   - app/playwright-worker.yaml
   - app/llm-worker.yaml
   - app/coordinator.yaml

@@ -137,6 +137,22 @@ No new Secret: it reuses the DB, MinIO and app secrets.
 > Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-workflow-worker` → `Workflow worker started
 > … task_queue=workflow`; the Web UI's task queue `workflow` lists the poller.
 
+### HTTP worker (Temporal)
+
+`app/http-worker-temporal.yaml` — Deployment `scrapeflow-http-worker-temporal`: the **http-worker
+image** (same `ImagePolicy` as `scrapeflow-http-worker`) with `WORKER_MODE=temporal`, polling task
+queue `scrape-http` for the `Scrape` activity. Runs beside the NATS-mode Deployment. No Service, no
+new Secret; **no NATS and no DB env** — Temporal + MinIO only.
+
+> ⚠️ **Only on an image built with `WORKER_MODE`** — an older binary ignores the variable, starts in
+> NATS mode and crash-loops on the missing `NATS_URL`. When first pushing this file, hand-set its tag
+> to the image that carries the Temporal activity.
+>
+> `terminationGracePeriodSeconds: 30` must stay above the worker's 20 s drain on SIGTERM.
+>
+> Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-http-worker-temporal` → `Temporal worker
+> started … task_queue=scrape-http`; the Web UI's task queue `scrape-http` lists the poller.
+
 ### MinIO credentials
 
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).

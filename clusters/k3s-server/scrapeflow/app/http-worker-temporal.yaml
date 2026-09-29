@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapeflow-http-worker-temporal
+  namespace: scrapeflow
+spec:
+  replicas: 1
+  # Stateless poller of the `scrape-http` task queue: a surge pod polling beside the old one is harmless.
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: scrapeflow-http-worker-temporal
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-http-worker-temporal
+    spec:
+      # The worker drains in-flight activities for up to 20 s on SIGTERM; this must stay above it.
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: wait-for-temporal
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-temporal 7233; do echo waiting for temporal; sleep 2; done']
+        - name: wait-for-minio
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
+      containers:
+        - name: http-worker
+          # Needs an image with WORKER_MODE (B.2) — an older binary ignores it, runs NATS mode and crash-loops on the missing NATS_URL.
+          image: k4rth/scrapeflow-http-worker:main-1790703736-ef68942df01debb6c34f5b96e66d7b2ba9d4f060 # {"$imagepolicy": "flux-system:scrapeflow-http-worker-policy"}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          # No NATS and no DB env: a light worker (Temporal + MinIO only).
+          env:
+            - name: WORKER_MODE
+              value: "temporal"
+            - name: TEMPORAL_ADDRESS
+              value: "scrapeflow-temporal:7233"
+            - name: TEMPORAL_NAMESPACE
+              value: "scrapeflow"
+            - name: MINIO_ENDPOINT
+              value: "scrapeflow-minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: rootUser
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: rootPassword
+            - name: MINIO_BUCKET
+              value: "scrapeflow-results"
+            - name: MINIO_SECURE
+              value: "false"
+            - name: FETCH_TIMEOUT_SECS
+              value: "30"
+            - name: CREDENTIALS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: credentials-encryption-key
