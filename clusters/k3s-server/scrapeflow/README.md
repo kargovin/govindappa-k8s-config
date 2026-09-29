@@ -122,6 +122,21 @@ kubectl -n scrapeflow port-forward svc/scrapeflow-temporal-ui 8081:8080
 > tag. Local port 8081 because the app repo's local compose UI holds 8080; any free port works —
 > reads and writes (CSRF-token protected) both verified on a port other than 8080.
 
+### Workflow worker
+
+`app/workflow-worker.yaml` — Deployment `scrapeflow-workflow-worker`: the **api image** (same
+`ImagePolicy`, so it follows the api's tag) running `uv run python -m app.workflows.worker_main`,
+polling Temporal task queue `workflow`. No Service — it only dials out to `scrapeflow-temporal:7233`.
+No new Secret: it reuses the DB, MinIO and app secrets.
+
+> ⚠️ **`uv run`, never bare `python`** — the image's system interpreter has none of the app's
+> packages. The pod also needs both Fernet keys: `app.settings` refuses to load without them.
+>
+> `terminationGracePeriodSeconds: 30` must stay above the worker's 20 s drain on SIGTERM.
+>
+> Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-workflow-worker` → `Workflow worker started
+> … task_queue=workflow`; the Web UI's task queue `workflow` lists the poller.
+
 ### MinIO credentials
 
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).

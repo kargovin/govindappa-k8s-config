@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapeflow-workflow-worker
+  namespace: scrapeflow
+spec:
+  replicas: 1
+  # Stateless poller of the `workflow` task queue: a surge pod polling beside the old one is harmless.
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: scrapeflow-workflow-worker
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-workflow-worker
+    spec:
+      # The worker drains in-flight work for up to 20 s on SIGTERM; this must stay above it.
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: wait-for-temporal
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-temporal 7233; do echo waiting for temporal; sleep 2; done']
+      containers:
+        - name: workflow-worker
+          image: k4rth/scrapeflow-api:main-1790675215-ce614d85360a928520549859b3dc82433313a594 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
+          # uv run, never bare python: the system interpreter has none of the app's packages.
+          command: ["uv", "run", "python", "-m", "app.workflows.worker_main"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          env:
+            - name: APP_ENV
+              value: "production"
+            - name: TEMPORAL_ADDRESS
+              value: "scrapeflow-temporal:7233"
+            - name: TEMPORAL_NAMESPACE
+              value: "scrapeflow"
+            # The only v2 pod with app-DB access (ADR-009 §8d).
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-db-credentials
+                  key: database-url
+            - name: MINIO_ENDPOINT
+              value: "scrapeflow-minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: rootUser
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: rootPassword
+            - name: MINIO_BUCKET
+              value: "scrapeflow-results"
+            - name: MINIO_SECURE
+              value: "false"
+            # app.settings refuses to load without both Fernet keys (BUG-019).
+            - name: LLM_KEY_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: llm-key-encryption-key
+            - name: CREDENTIALS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: credentials-encryption-key
