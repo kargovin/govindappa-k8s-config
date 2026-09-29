@@ -66,6 +66,12 @@ spec:
               value: "redis://scrapeflow-redis-master:6379/0"
             - name: NATS_URL
               value: "nats://scrapeflow-nats:4222"
+            # The API starts, signals and queries workflows from C.5 on; unset, the setting falls
+            # back to localhost:7233 and every connect fails.
+            - name: TEMPORAL_ADDRESS
+              value: "scrapeflow-temporal:7233"
+            - name: TEMPORAL_NAMESPACE
+              value: "scrapeflow"
             - name: MINIO_ENDPOINT
               value: "scrapeflow-minio:9000"
             - name: MINIO_ACCESS_KEY
