@@ -24,7 +24,7 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-temporal 7233; do echo waiting for temporal; sleep 2; done']
       containers:
         - name: workflow-worker
-          image: k4rth/scrapeflow-api:main-1790703734-ef68942df01debb6c34f5b96e66d7b2ba9d4f060 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
+          image: k4rth/scrapeflow-api:main-1790760132-1717032231a6c53f8b774fed0183466e13dbc9c2 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
           # uv run, never bare python: the system interpreter has none of the app's packages.
           command: ["uv", "run", "python", "-m", "app.workflows.worker_main"]
           resources:
