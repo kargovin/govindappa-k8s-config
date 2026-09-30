@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapeflow-llm-worker-temporal
+  namespace: scrapeflow
+spec:
+  replicas: 1
+  # Stateless poller of the `llm` task queue: a surge pod polling beside the draining old one is harmless.
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: scrapeflow-llm-worker-temporal
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-llm-worker-temporal
+    spec:
+      # The worker drains an in-flight LLM call for up to 400 s on SIGTERM (LLM_GRACEFUL_SHUTDOWN_SECONDS);
+      # this must stay above it, or the kill cancels the call and the retry re-bills the user's key.
+      terminationGracePeriodSeconds: 420
+      initContainers:
+        - name: wait-for-temporal
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-temporal 7233; do echo waiting for temporal; sleep 2; done']
+        - name: wait-for-minio
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
+      containers:
+        - name: llm-worker
+          # Needs an image with WORKER_MODE (B.6) — an older image ignores it, runs NATS mode and crash-loops on the missing NATS_URL.
+          image: k4rth/scrapeflow-llm-worker:main-1790760130-1717032231a6c53f8b774fed0183466e13dbc9c2 # {"$imagepolicy": "flux-system:scrapeflow-llm-worker-policy"}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          # No NATS and no DB env: a light worker (Temporal + MinIO only).
+          env:
+            - name: WORKER_MODE
+              value: "temporal"
+            - name: TEMPORAL_ADDRESS
+              value: "scrapeflow-temporal:7233"
+            - name: TEMPORAL_NAMESPACE
+              value: "scrapeflow"
+            - name: MINIO_ENDPOINT
+              value: "scrapeflow-minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: rootUser
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: rootPassword
+            - name: MINIO_BUCKET
+              value: "scrapeflow-results"
+            - name: MINIO_SECURE
+              value: "false"
+            - name: LLM_KEY_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: llm-key-encryption-key
+            - name: LLM_MAX_WORKERS
+              value: "3"
+            # Modal cold start is 90-110 s; with the 180 s warm-up budget the activity needs ~360 s start-to-close.
+            - name: LLM_REQUEST_TIMEOUT_SECONDS
+              value: "180"
+            - name: LLM_MAX_CONTENT_CHARS
+              value: "50000"

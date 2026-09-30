@@ -155,6 +155,24 @@ new Secret; **no NATS and no DB env** — Temporal + MinIO only.
 > Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-http-worker-temporal` → `Temporal worker
 > started … task_queue=scrape-http`; the Web UI's task queue `scrape-http` lists the poller.
 
+### LLM worker (Temporal)
+
+`app/llm-worker-temporal.yaml` — Deployment `scrapeflow-llm-worker-temporal`: the **llm-worker
+image** (same `ImagePolicy` as `scrapeflow-llm-worker`) with `WORKER_MODE=temporal`, polling task
+queue `llm` for the `LLMExtract` activity. Runs beside the NATS-mode Deployment. No Service, no new
+Secret; **no NATS and no DB env** — Temporal + MinIO + the LLM-key Fernet key only.
+
+> ⚠️ **Only on an image built with `WORKER_MODE`** — an older image ignores the variable, starts in
+> NATS mode and crash-loops on the missing `NATS_URL`. When first pushing this file, hand-set its tag
+> to the image that carries the Temporal activity.
+>
+> ⚠️ **`terminationGracePeriodSeconds: 420` must stay above the worker's 400 s drain on SIGTERM**
+> (`LLM_GRACEFUL_SHUTDOWN_SECONDS`, sized to one warm-up + request). A rollout with a call in flight
+> can take ~7 minutes; a shorter grace period cancels the call and the retry re-bills the user's key.
+>
+> Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-llm-worker-temporal` →
+> `temporal_worker_started … task_queue=llm`; the Web UI's task queue `llm` lists the poller.
+
 ### MinIO credentials
 
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).

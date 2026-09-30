@@ -16,6 +16,7 @@ resources:
   - app/http-worker-temporal.yaml
   - app/playwright-worker.yaml
   - app/llm-worker.yaml
+  - app/llm-worker-temporal.yaml
   - app/coordinator.yaml
   - app/workflow-worker.yaml
   - app/cleanup-cronjob.yaml
