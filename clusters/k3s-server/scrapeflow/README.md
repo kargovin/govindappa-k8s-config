@@ -125,12 +125,14 @@ kubectl -n scrapeflow port-forward svc/scrapeflow-temporal-ui 8081:8080
 ### Workflow worker
 
 `app/workflow-worker.yaml` — Deployment `scrapeflow-workflow-worker`: the **api image** (same
-`ImagePolicy`, so it follows the api's tag) running `uv run python -m app.workflows.worker_main`,
+`ImagePolicy`, so it follows the api's tag) running `/app/.venv/bin/python -m app.workflows.worker_main`,
 polling Temporal task queue `workflow`. No Service — it only dials out to `scrapeflow-temporal:7233`.
 No new Secret: it reuses the DB, MinIO and app secrets.
 
-> ⚠️ **`uv run`, never bare `python`** — the image's system interpreter has none of the app's
-> packages. The pod also needs both Fernet keys: `app.settings` refuses to load without them.
+> ⚠️ **`/app/.venv/bin/python`, never bare `python` and not `uv run`** — the image's system
+> interpreter has none of the app's packages, and `uv run` as PID 1 ignores a SIGTERM that arrives
+> during its own startup, so a stop then waits out the grace period and ends in a SIGKILL. The pod
+> also needs both Fernet keys: `app.settings` refuses to load without them.
 >
 > `terminationGracePeriodSeconds: 30` must stay above the worker's 20 s drain on SIGTERM.
 >

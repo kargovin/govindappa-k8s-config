@@ -25,8 +25,9 @@ spec:
       containers:
         - name: workflow-worker
           image: k4rth/scrapeflow-api:main-1790760132-1717032231a6c53f8b774fed0183466e13dbc9c2 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
-          # uv run, never bare python: the system interpreter has none of the app's packages.
-          command: ["uv", "run", "python", "-m", "app.workflows.worker_main"]
+          # The venv's python as PID 1: bare `python` has none of the app's packages, and `uv run`
+          # as PID 1 ignores SIGTERM during its own startup (~21 s here), stalling a stop to the grace period.
+          command: ["/app/.venv/bin/python", "-m", "app.workflows.worker_main"]
           resources:
             requests:
               cpu: 50m
