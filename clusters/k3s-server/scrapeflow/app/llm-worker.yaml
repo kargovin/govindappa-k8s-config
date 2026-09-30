@@ -22,7 +22,7 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
         - name: llm-worker
-          image: k4rth/scrapeflow-llm-worker:main-1790703735-ef68942df01debb6c34f5b96e66d7b2ba9d4f060 # {"$imagepolicy": "flux-system:scrapeflow-llm-worker-policy"}
+          image: k4rth/scrapeflow-llm-worker:main-1790760130-1717032231a6c53f8b774fed0183466e13dbc9c2 # {"$imagepolicy": "flux-system:scrapeflow-llm-worker-policy"}
           resources:
             requests:
               cpu: 50m
