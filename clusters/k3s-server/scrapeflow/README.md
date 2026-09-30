@@ -173,6 +173,29 @@ Secret; **no NATS and no DB env** — Temporal + MinIO + the LLM-key Fernet key 
 > Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-llm-worker-temporal` →
 > `temporal_worker_started … task_queue=llm`; the Web UI's task queue `llm` lists the poller.
 
+### Playwright worker (Temporal)
+
+`app/playwright-worker-temporal.yaml` — Deployment `scrapeflow-playwright-worker-temporal`: the
+**playwright-worker image** (same `ImagePolicy` as `scrapeflow-playwright-worker`) with
+`WORKER_MODE=temporal`, polling task queue `scrape-playwright` for the `Scrape` activity. Runs
+beside the NATS-mode Deployment, with the same resources (headed Chrome under Xvfb). No Service, no
+new Secret; **no NATS and no DB env** — Temporal + MinIO + the credentials Fernet key only.
+
+> ⚠️ **Only on an image built with `WORKER_MODE`** — an older image ignores the variable, starts in
+> NATS mode and fails on the missing NATS server. When first pushing this file, hand-set its tag to
+> the image that carries the Temporal activity.
+>
+> ⚠️ **`terminationGracePeriodSeconds: 660` must stay above the worker's 630 s drain on SIGTERM**
+> (`PLAYWRIGHT_GRACEFUL_SHUTDOWN_SECONDS`, sized to the 300 s `timeout_seconds` maximum twice over +
+> upload). A rollout with a render in flight can take ~11 minutes; an idle pod exits at once.
+>
+> The container's start (`entrypoint.sh`: Xvfb, then `exec python` as PID 1) is the NATS worker's,
+> unchanged — never `xvfb-run` as the entrypoint (a dead worker would look healthy).
+>
+> Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-playwright-worker-temporal` →
+> `temporal_worker_started … task_queue=scrape-playwright`; the Web UI's task queue
+> `scrape-playwright` lists the poller.
+
 ### MinIO credentials
 
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).

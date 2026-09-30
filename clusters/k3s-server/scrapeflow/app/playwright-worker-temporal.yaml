@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapeflow-playwright-worker-temporal
+  namespace: scrapeflow
+spec:
+  replicas: 1
+  # Stateless poller of the `scrape-playwright` task queue: a surge pod polling beside the draining old one is harmless.
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: scrapeflow-playwright-worker-temporal
+  template:
+    metadata:
+      labels:
+        app: scrapeflow-playwright-worker-temporal
+    spec:
+      # The worker drains an in-flight render for up to 630 s on SIGTERM (PLAYWRIGHT_GRACEFUL_SHUTDOWN_SECONDS);
+      # this must stay above it, or the kill cancels the render and the retry re-renders it.
+      terminationGracePeriodSeconds: 660
+      initContainers:
+        - name: wait-for-temporal
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-temporal 7233; do echo waiting for temporal; sleep 2; done']
+        - name: wait-for-minio
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
+      containers:
+        - name: playwright-worker
+          # Needs an image with WORKER_MODE (B.8) — an older image ignores it, runs NATS mode and fails on the missing NATS server.
+          image: k4rth/scrapeflow-playwright-worker:main-1790793252-a11cce67695a5c940fefa74b746416a1ad835bc9 # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
+          # Same as the NATS Deployment: headed Chrome under Xvfb, PLAYWRIGHT_MAX_WORKERS contexts (ADR-008).
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2000m
+              memory: 4Gi
+          # No NATS and no DB env: a light worker (Temporal + MinIO only).
+          env:
+            - name: WORKER_MODE
+              value: "temporal"
+            - name: TEMPORAL_ADDRESS
+              value: "scrapeflow-temporal:7233"
+            - name: TEMPORAL_NAMESPACE
+              value: "scrapeflow"
+            - name: MINIO_ENDPOINT
+              value: "scrapeflow-minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: rootUser
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-credentials
+                  key: rootPassword
+            - name: MINIO_BUCKET
+              value: "scrapeflow-results"
+            - name: MINIO_SECURE
+              value: "false"
+            - name: PLAYWRIGHT_MAX_WORKERS
+              value: "3"
+            - name: PLAYWRIGHT_DEFAULT_TIMEOUT_SECONDS
+              value: "60"
+            - name: CREDENTIALS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-app-secrets
+                  key: credentials-encryption-key
