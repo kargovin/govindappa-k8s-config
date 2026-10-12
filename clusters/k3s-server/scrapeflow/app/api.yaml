@@ -72,6 +72,11 @@ spec:
               value: "scrapeflow-temporal:7233"
             - name: TEMPORAL_NAMESPACE
               value: "scrapeflow"
+            # Job cutover (ADR-009 16d): the engine NEW job runs go to — v1 = NATS, v2 = Temporal.
+            # A run keeps the lane it was created on, so flipping back strands nothing in flight.
+            # Runbook: app repo docs/project/phase4-implementation-backlog.md → D.5.
+            - name: JOB_LANE
+              value: "v1"
             - name: MINIO_ENDPOINT
               value: "scrapeflow-minio:9000"
             - name: MINIO_ACCESS_KEY
