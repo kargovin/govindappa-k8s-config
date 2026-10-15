@@ -48,6 +48,9 @@ spec:
                 secretKeyRef:
                   name: scrapeflow-db-credentials
                   key: database-url
+            # Per-host limiter leases (acquire/release_host_slot); unset, every scrape fails open.
+            - name: REDIS_URL
+              value: "redis://scrapeflow-redis-master:6379/0"
             - name: MINIO_ENDPOINT
               value: "scrapeflow-minio:9000"
             - name: MINIO_ACCESS_KEY
