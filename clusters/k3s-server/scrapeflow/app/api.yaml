@@ -80,7 +80,7 @@ spec:
             # Batch cutover (ADR-009 16d): the same switch for new batches; every run of a batch
             # keeps its lane. Runbook: app repo docs/project/phase4-implementation-backlog.md → E.2.
             - name: BATCH_LANE
-              value: 'v1'
+              value: 'v2'
             - name: MINIO_ENDPOINT
               value: 'scrapeflow-minio:9000'
             - name: MINIO_ACCESS_KEY
