@@ -18,7 +18,6 @@ resources:
   - app/playwright-worker-temporal.yaml
   - app/llm-worker.yaml
   - app/llm-worker-temporal.yaml
-  - app/coordinator.yaml
   - app/workflow-worker.yaml
   - app/cleanup-cronjob.yaml
   - image-automation/image-repositories.yaml
