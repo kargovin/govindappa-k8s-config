@@ -29,7 +29,7 @@ spec:
       containers:
         - name: playwright-worker
           # Needs an image with WORKER_MODE (B.8) — an older image ignores it, runs NATS mode and fails on the missing NATS server.
-          image: k4rth/scrapeflow-playwright-worker:main-1790793252-a11cce67695a5c940fefa74b746416a1ad835bc9 # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
+          image: k4rth/scrapeflow-playwright-worker:main-1793103272-261f9315bd9e797818ee4d5be35b5f74578b2549 # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
           # Same as the NATS Deployment: headed Chrome under Xvfb, PLAYWRIGHT_MAX_WORKERS contexts (ADR-008).
           resources:
             requests:
