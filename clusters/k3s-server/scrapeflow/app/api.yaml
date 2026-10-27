@@ -18,39 +18,19 @@ spec:
       initContainers:
         - name: wait-for-postgres
           image: busybox
-          command:
-            [
-              'sh',
-              '-c',
-              'until nc -z scrapeflow-postgresql 5432; do echo waiting for postgres; sleep 2; done',
-            ]
+          command: ['sh', '-c', 'until nc -z scrapeflow-postgresql 5432; do echo waiting for postgres; sleep 2; done']
         - name: wait-for-redis
           image: busybox
-          command:
-            [
-              'sh',
-              '-c',
-              'until nc -z scrapeflow-redis-master 6379; do echo waiting for redis; sleep 2; done',
-            ]
+          command: ['sh', '-c', 'until nc -z scrapeflow-redis-master 6379; do echo waiting for redis; sleep 2; done']
         - name: wait-for-nats
           image: busybox
-          command:
-            [
-              'sh',
-              '-c',
-              'until nc -z scrapeflow-nats 4222; do echo waiting for nats; sleep 2; done',
-            ]
+          command: ['sh', '-c', 'until nc -z scrapeflow-nats 4222; do echo waiting for nats; sleep 2; done']
         - name: wait-for-minio
           image: busybox
-          command:
-            [
-              'sh',
-              '-c',
-              'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done',
-            ]
+          command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
         - name: api
-          image: k4rth/scrapeflow-api:main-1791829789-0b4ac9e06a4aad23e92e3627a6612780bd79e75e # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
+          image: k4rth/scrapeflow-api:main-1793094247-faa1f83e7335dd650469d64c99d141ef9bd6c6db # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
           ports:
             - containerPort: 8000
           resources:
