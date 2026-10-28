@@ -8,8 +8,6 @@ resources:
   - infrastructure/temporal-ui.yaml
   - infrastructure/redis.yaml
   - infrastructure/minio.yaml
-  - infrastructure/nats.yaml
-  - app/nats-init-job.yaml
   - app/temporal-init-job.yaml
   - app/api.yaml
   - app/http-worker-temporal.yaml

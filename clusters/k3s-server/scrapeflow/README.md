@@ -286,7 +286,6 @@ flux get helmreleases -A -n scrapeflow
 | PostgreSQL | `scrapeflow-postgresql:5432`      |
 | Redis      | `scrapeflow-redis-master:6379`    |
 | MinIO      | `scrapeflow-minio:9000`           |
-| NATS       | `scrapeflow-nats:4222`            |
 | Temporal PG| `scrapeflow-temporal-postgresql:5432` |
 | Temporal   | `scrapeflow-temporal:7233`        |
 | Temporal UI| `scrapeflow-temporal-ui:8080` (port-forward only) |

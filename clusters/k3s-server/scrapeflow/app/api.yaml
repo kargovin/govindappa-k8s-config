@@ -22,9 +22,6 @@ spec:
         - name: wait-for-redis
           image: busybox
           command: ['sh', '-c', 'until nc -z scrapeflow-redis-master 6379; do echo waiting for redis; sleep 2; done']
-        - name: wait-for-nats
-          image: busybox
-          command: ['sh', '-c', 'until nc -z scrapeflow-nats 4222; do echo waiting for nats; sleep 2; done']
         - name: wait-for-minio
           image: busybox
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
@@ -64,8 +61,6 @@ spec:
                   key: database-url
             - name: REDIS_URL
               value: 'redis://scrapeflow-redis-master:6379/0'
-            - name: NATS_URL
-              value: 'nats://scrapeflow-nats:4222'
             # The API starts, signals and queries workflows from C.5 on; unset, the setting falls
             # back to localhost:7233 and every connect fails.
             - name: TEMPORAL_ADDRESS

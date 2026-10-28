@@ -35,7 +35,7 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
-          # No NATS and no DB env: a light worker (Temporal + MinIO only).
+          # No DB env: a light worker (Temporal + MinIO only).
           env:
             - name: TEMPORAL_ADDRESS
               value: "scrapeflow-temporal:7233"
