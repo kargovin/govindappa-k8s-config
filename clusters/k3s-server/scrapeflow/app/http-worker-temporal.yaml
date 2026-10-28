@@ -28,7 +28,7 @@ spec:
       containers:
         - name: http-worker
           # Needs an image with WORKER_MODE (B.2) — an older binary ignores it, runs NATS mode and crash-loops on the missing NATS_URL.
-          image: k4rth/scrapeflow-http-worker:main-1790703736-ef68942df01debb6c34f5b96e66d7b2ba9d4f060 # {"$imagepolicy": "flux-system:scrapeflow-http-worker-policy"}
+          image: k4rth/scrapeflow-http-worker:main-1793207138-722f54b297ab471ebbc660d7739235c0c8c3e1db # {"$imagepolicy": "flux-system:scrapeflow-http-worker-policy"}
           resources:
             requests:
               cpu: 50m
