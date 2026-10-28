@@ -28,7 +28,6 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
         - name: llm-worker
-          # Needs an image with WORKER_MODE (B.6) — an older image ignores it, runs NATS mode and crash-loops on the missing NATS_URL.
           image: k4rth/scrapeflow-llm-worker:main-1793207138-722f54b297ab471ebbc660d7739235c0c8c3e1db # {"$imagepolicy": "flux-system:scrapeflow-llm-worker-policy"}
           resources:
             requests:
@@ -39,8 +38,6 @@ spec:
               memory: 512Mi
           # No NATS and no DB env: a light worker (Temporal + MinIO only).
           env:
-            - name: WORKER_MODE
-              value: "temporal"
             - name: TEMPORAL_ADDRESS
               value: "scrapeflow-temporal:7233"
             - name: TEMPORAL_NAMESPACE

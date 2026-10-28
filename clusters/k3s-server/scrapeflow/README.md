@@ -142,14 +142,10 @@ No new Secret: it reuses the DB, MinIO and app secrets.
 ### HTTP worker (Temporal)
 
 `app/http-worker-temporal.yaml` — Deployment `scrapeflow-http-worker-temporal`: the **http-worker
-image** (`ImagePolicy` `scrapeflow-http-worker-policy`) with `WORKER_MODE=temporal`, polling task
+image** (`ImagePolicy` `scrapeflow-http-worker-policy`) polling task
 queue `scrape-http` for the `Scrape` activity. The image's only Deployment since H.1 removed the
 NATS-mode one. No Service, no new Secret; **no NATS and no DB env** — Temporal + MinIO only.
 
-> ⚠️ **Only on an image built with `WORKER_MODE`** — an older binary ignores the variable, starts in
-> NATS mode and crash-loops on the missing `NATS_URL`. When first pushing this file, hand-set its tag
-> to the image that carries the Temporal activity.
->
 > `terminationGracePeriodSeconds: 30` must stay above the worker's 20 s drain on SIGTERM.
 >
 > Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-http-worker-temporal` → `Temporal worker
@@ -158,15 +154,11 @@ NATS-mode one. No Service, no new Secret; **no NATS and no DB env** — Temporal
 ### LLM worker (Temporal)
 
 `app/llm-worker-temporal.yaml` — Deployment `scrapeflow-llm-worker-temporal`: the **llm-worker
-image** (`ImagePolicy` `scrapeflow-llm-worker-policy`) with `WORKER_MODE=temporal`, polling task
+image** (`ImagePolicy` `scrapeflow-llm-worker-policy`) polling task
 queues `llm` (`LLMExtract`) and `content` (Clean, Validate). The image's only Deployment since H.1
 removed the NATS-mode one. No Service, no new Secret; **no NATS and no DB env** — Temporal + MinIO
 + the LLM-key Fernet key only.
 
-> ⚠️ **Only on an image built with `WORKER_MODE`** — an older image ignores the variable, starts in
-> NATS mode and crash-loops on the missing `NATS_URL`. When first pushing this file, hand-set its tag
-> to the image that carries the Temporal activity.
->
 > ⚠️ **`terminationGracePeriodSeconds: 420` must stay above the worker's 400 s drain on SIGTERM**
 > (`LLM_GRACEFUL_SHUTDOWN_SECONDS`, sized to one warm-up + request). A rollout with a call in flight
 > can take ~7 minutes; a shorter grace period cancels the call and the retry re-bills the user's key.
@@ -178,15 +170,11 @@ removed the NATS-mode one. No Service, no new Secret; **no NATS and no DB env** 
 
 `app/playwright-worker-temporal.yaml` — Deployment `scrapeflow-playwright-worker-temporal`: the
 **playwright-worker image** (`ImagePolicy` `scrapeflow-playwright-worker-policy`) with
-`WORKER_MODE=temporal`, polling task queues `scrape-playwright` (`Scrape`) and `crawl` (the crawl's
+polling task queues `scrape-playwright` (`Scrape`) and `crawl` (the crawl's
 robots/sitemap/link activities). Headed Chrome under Xvfb. The image's only Deployment since H.1
 removed the NATS-mode one. No Service, no new Secret; **no NATS and no DB env** — Temporal + MinIO
 + the credentials Fernet key only.
 
-> ⚠️ **Only on an image built with `WORKER_MODE`** — an older image ignores the variable, starts in
-> NATS mode and fails on the missing NATS server. When first pushing this file, hand-set its tag to
-> the image that carries the Temporal activity.
->
 > ⚠️ **`terminationGracePeriodSeconds: 660` must stay above the worker's 630 s drain on SIGTERM**
 > (`PLAYWRIGHT_GRACEFUL_SHUTDOWN_SECONDS`, sized to the 300 s `timeout_seconds` maximum twice over +
 > upload). A rollout with a render in flight can take ~11 minutes; an idle pod exits at once.
