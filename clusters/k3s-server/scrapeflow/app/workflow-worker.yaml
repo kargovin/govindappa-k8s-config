@@ -24,7 +24,7 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-temporal 7233; do echo waiting for temporal; sleep 2; done']
       containers:
         - name: workflow-worker
-          image: k4rth/scrapeflow-api:main-1793211905-cd5c60e56792d886248dc50587ff4c79484bf943 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
+          image: k4rth/scrapeflow-api:main-1793277830-eea8344f5d0cb4161cc90f86664dcf799271b025 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
           # The venv's python as PID 1: bare `python` has none of the app's packages, and `uv run`
           # as PID 1 ignores SIGTERM during its own startup (~21 s here), stalling a stop to the grace period.
           command: ["/app/.venv/bin/python", "-m", "app.workflows.worker_main"]
