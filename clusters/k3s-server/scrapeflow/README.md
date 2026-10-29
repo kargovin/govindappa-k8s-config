@@ -122,6 +122,22 @@ kubectl -n scrapeflow port-forward svc/scrapeflow-temporal-ui 8081:8080
 > tag. Local port 8081 because the app repo's local compose UI holds 8080; any free port works —
 > reads and writes (CSRF-token protected) both verified on a port other than 8080.
 
+### API
+
+`app/api.yaml` — Deployment `scrapeflow-api`: **2 replicas, `RollingUpdate`** (`maxSurge: 1`,
+`maxUnavailable: 0`) behind Service `scrapeflow-api` and the ingress. Each pod runs `alembic upgrade
+head` on startup under a Postgres advisory lock, so pods that start together migrate one at a time
+(a waiter logs `Another process holds the migration lock; waiting for it`).
+
+> ⚠️ **During a rollout an old pod and a new pod serve side by side**, with the new pod's migration
+> already applied. A migration that drops or renames a column the running code still reads must be
+> split across two releases: stop reading it, then drop it.
+>
+> Each pod keeps its own WebSocket count, so `WS_MAX_CONNECTIONS_PER_USER` (25) is per pod — a user
+> can hold up to 2 × that. Live status reaches every pod (`pg_notify` goes to each listener).
+>
+> `preStop` sleeps 5 s so Traefik stops routing to a pod before it gets SIGTERM.
+
 ### Workflow worker
 
 `app/workflow-worker.yaml` — Deployment `scrapeflow-workflow-worker`: the **api image** (same

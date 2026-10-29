@@ -4,9 +4,12 @@ metadata:
   name: scrapeflow-api
   namespace: scrapeflow
 spec:
-  replicas: 1
+  replicas: 2
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: scrapeflow-api
@@ -30,6 +33,11 @@ spec:
           image: k4rth/scrapeflow-api:main-1793211905-cd5c60e56792d886248dc50587ff4c79484bf943 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
           ports:
             - containerPort: 8000
+          # Traefik drops a terminating pod from its endpoints a moment after SIGTERM would land.
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5
           resources:
             requests:
               cpu: 100m
