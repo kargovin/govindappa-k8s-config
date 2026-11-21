@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrapeflow-delivery-worker
+  namespace: scrapeflow
+spec:
+  replicas: 1
+  # Stateless poller of the `delivery` task queue: a surge pod polling beside the draining old one is harmless.
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: scrapeflow-delivery-worker
+  template:
+    metadata:
+      # This label is what NetworkPolicy scrapeflow-delivery-worker selects.
+      labels:
+        app: scrapeflow-delivery-worker
+    spec:
+      # The worker drains an in-flight attempt for up to 75 s on SIGTERM (DELIVERY_GRACEFUL_SHUTDOWN_SECONDS);
+      # this must stay above it.
+      terminationGracePeriodSeconds: 90
+      # Nothing here talks to the Kubernetes API.
+      automountServiceAccountToken: false
+      initContainers:
+        - name: wait-for-temporal
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-temporal 7233; do echo waiting for temporal; sleep 2; done']
+        - name: wait-for-minio
+          image: busybox
+          command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
+      containers:
+        - name: delivery-worker
+          # The image's CMD is the venv's python as PID 1 (`python -m worker.main`).
+          image: k4rth/scrapeflow-delivery-worker:main-1795276971-d36a1148f1e393b9b3a4cd9bfeff866194b93dae # {"$imagepolicy": "flux-system:scrapeflow-delivery-worker-policy"}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ['ALL']
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          # Explicit env only (ScrapeFlow ADR-015 §4): no DB, no app secrets, the root MinIO user never.
+          env:
+            - name: TEMPORAL_ADDRESS
+              value: "scrapeflow-temporal:7233"
+            - name: TEMPORAL_NAMESPACE
+              value: "scrapeflow"
+            - name: MINIO_ENDPOINT
+              value: "scrapeflow-minio:9000"
+            # The read-only user from infrastructure/minio.yaml's `users`.
+            - name: MINIO_ACCESS_KEY
+              value: "scrapeflow-delivery"
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-minio-delivery-credentials
+                  key: password
+            - name: MINIO_BUCKET
+              value: "scrapeflow-results"
+            - name: MINIO_SECURE
+              value: "false"
+            - name: DESTINATION_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-destination-secrets
+                  key: destination-encryption-key

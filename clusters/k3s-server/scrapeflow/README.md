@@ -203,6 +203,27 @@ removed the NATS-mode one. No Service, no new Secret; **no NATS and no DB env** 
 > `temporal_worker_started … task_queue=scrape-playwright`; the Web UI's task queue
 > `scrape-playwright` lists the poller.
 
+### Delivery worker
+
+`app/delivery-worker.yaml` — Deployment `scrapeflow-delivery-worker`: the **delivery-worker image**
+(`ImagePolicy` `scrapeflow-delivery-worker-policy`) polling task queue `delivery` — bucket
+deliveries and their undos, email sends, destination tests (ScrapeFlow ADR-015 §4). No Service.
+**No DB env and no app secrets** — Temporal, the read-only MinIO user and the destinations key, each
+listed explicitly. The NetworkPolicy above applies to it from its first pod.
+
+> ⚠️ **First deploy needs a tag that exists**: a new image has none until a ScrapeFlow `main` push
+> builds it (CI job `build-delivery-worker`). The order is: the Secrets, MinIO user, NetworkPolicy
+> and the api/workflow-worker env first; then the ScrapeFlow `main` push; then this Deployment and
+> its image policy, with `main-STEP2-TAG` replaced by the tag CI just pushed
+> (`k4rth/scrapeflow-delivery-worker:main-<ts>-<sha>`). Between the last two steps a delivery
+> finds no poller and fails at its 60 s `schedule_to_start`.
+>
+> `terminationGracePeriodSeconds: 90` must stay above the worker's 75 s drain on SIGTERM.
+>
+> Verify: `kubectl -n scrapeflow logs deploy/scrapeflow-delivery-worker` → `temporal_worker_started
+> … task_queue=delivery`; the Web UI's task queue `delivery` lists the poller;
+> `kubectl -n scrapeflow get deploy scrapeflow-delivery-worker -o yaml | grep -c DATABASE_URL` → `0`.
+
 ### MinIO credentials
 
 > **Note:** The MinIO official chart requires keys named `rootUser` and `rootPassword` (not `root-user`/`root-password`).
@@ -322,21 +343,25 @@ Verify (port-forward + an `mc` container on your machine; the root password neve
 
 ```bash
 kubectl -n scrapeflow port-forward svc/scrapeflow-minio 19000:9000 &
-ROOT_PASS="$(kubectl -n scrapeflow get secret scrapeflow-minio-credentials -o jsonpath='{.data.rootPassword}' | base64 -d)"
-DELIVERY_PASS="$(kubectl -n scrapeflow get secret scrapeflow-minio-delivery-credentials -o jsonpath='{.data.password}' | base64 -d)"
-docker run --rm --network host -e ROOT_PASS -e DELIVERY_PASS --entrypoint sh minio/mc -c '
-  mc alias set m http://127.0.0.1:19000 scrapeflow "$ROOT_PASS" >/dev/null
+# exported: `docker run -e VAR` copies only exported variables — unexported, mc runs anonymous and gets Access Denied
+export ROOT_USER="$(kubectl -n scrapeflow get secret scrapeflow-minio-credentials -o jsonpath='{.data.rootUser}' | base64 -d)"
+export ROOT_PASS="$(kubectl -n scrapeflow get secret scrapeflow-minio-credentials -o jsonpath='{.data.rootPassword}' | base64 -d)"
+export DELIVERY_PASS="$(kubectl -n scrapeflow get secret scrapeflow-minio-delivery-credentials -o jsonpath='{.data.password}' | base64 -d)"
+echo "lengths: ${#ROOT_USER} ${#ROOT_PASS} ${#DELIVERY_PASS}"   # none may be 0
+docker run --rm --network host -e ROOT_USER -e ROOT_PASS -e DELIVERY_PASS --entrypoint sh minio/mc -c '
+  mc alias set m http://127.0.0.1:19000 "$ROOT_USER" "$ROOT_PASS" >/dev/null || exit 1
   mc admin user list m                       # scrapeflow-delivery enabled, delivery-read
   mc admin policy info m delivery-read
   P=scrapeflow-results/delivery-check/probe.txt
-  echo probe | mc pipe "m/$P" >/dev/null
-  mc alias set d http://127.0.0.1:19000 scrapeflow-delivery "$DELIVERY_PASS" >/dev/null
-  mc cat "d/$P" >/dev/null && echo "read: ok"
+  echo probe | mc pipe "m/$P" >/dev/null || exit 1
+  mc alias set d http://127.0.0.1:19000 scrapeflow-delivery "$DELIVERY_PASS" >/dev/null || exit 1
+  mc cat "d/$P" >/dev/null && echo "read: ok" || echo "read: FAILED"
   mc ls d/scrapeflow-results >/dev/null 2>&1 && echo "list: ALLOWED (wrong)" || echo "list: refused"
   echo x | mc pipe d/scrapeflow-results/delivery-check/write.txt >/dev/null 2>&1 && echo "write: ALLOWED (wrong)" || echo "write: refused"
   mc rm "d/$P" >/dev/null 2>&1 && echo "delete: ALLOWED (wrong)" || echo "delete: refused"
   mc rm --recursive --force m/scrapeflow-results/delivery-check/ >/dev/null'
 kill %1
+unset ROOT_USER ROOT_PASS DELIVERY_PASS
 ```
 
 > Expected: `read: ok`, then `refused` three times (the script was run against compose's MinIO,
