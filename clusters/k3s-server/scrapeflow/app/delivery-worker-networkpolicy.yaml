@@ -1,0 +1,65 @@
+# The delivery worker reaches users' destinations, so its pod gets a second layer behind the code's
+# address check (ScrapeFlow ADR-015 §3, §4): DNS, Temporal and MinIO by pod and port, the public
+# internet on any port, nothing private, not the node. No ingress. Matches no pod until the
+# Deployment lands (release step 3).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scrapeflow-delivery-worker
+  namespace: scrapeflow
+spec:
+  podSelector:
+    matchLabels:
+      app: scrapeflow-delivery-worker
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app: scrapeflow-temporal
+      ports:
+        - protocol: TCP
+          port: 7233
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+              release: scrapeflow-minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # IPv4 only: IPv6 destinations are refused here (the worker moves on to the next address).
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # k3s pod and service CIDRs (inside 10.0.0.0/8 too; edit here if the cluster's differ).
+              - 10.42.0.0/16
+              - 10.43.0.0/16
+              # RFC 1918
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              # Carrier-grade NAT
+              - 100.64.0.0/10
+              # Link-local (cloud metadata) and loopback
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+              # The node's own address (InternalIP = its public IP, kimsufi-server). A pod reaching
+              # its node arrives from inside the machine (BUG-032). Add any other node address that
+              # `kubectl get nodes -o wide` lists.
+              - 139.99.121.44/32

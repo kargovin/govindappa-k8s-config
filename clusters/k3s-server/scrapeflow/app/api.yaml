@@ -120,6 +120,15 @@ spec:
                 secretKeyRef:
                   name: scrapeflow-app-secrets
                   key: credentials-encryption-key
+            # Required at startup (M): destination secrets are encrypted on save; the host names
+            # email Message-IDs and the links in messages.
+            - name: DESTINATION_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-destination-secrets
+                  key: destination-encryption-key
+            - name: PUBLIC_BASE_URL
+              value: 'https://scrapeflow.govindappa.com'
 ---
 apiVersion: v1
 kind: Service

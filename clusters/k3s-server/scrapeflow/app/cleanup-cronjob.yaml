@@ -55,3 +55,11 @@ spec:
                   value: "false"
                 - name: SCHEDULE_RUN_RETENTION_DAYS
                   value: "90"
+                # Required by app.settings at import (M); the two older Fernet keys are BUG-019's.
+                - name: DESTINATION_ENCRYPTION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: scrapeflow-destination-secrets
+                      key: destination-encryption-key
+                - name: PUBLIC_BASE_URL
+                  value: "https://scrapeflow.govindappa.com"

@@ -25,3 +25,23 @@ spec:
         memory: 512Mi
         cpu: 500m
     mode: standalone
+    # The delivery worker's user: read objects in scrapeflow-results, no list, write or delete
+    # (ScrapeFlow ADR-015 §4; compose's docker/minio/delivery-read.json). The chart's post-job
+    # creates both on install/upgrade; it never changes an existing user's password.
+    # Setting `users` also replaces the chart's default list (a `console` consoleAdmin user).
+    policies:
+      - name: delivery-read
+        statements:
+          - resources:
+              - 'arn:aws:s3:::scrapeflow-results'
+            actions:
+              - 's3:GetBucketLocation'
+          - resources:
+              - 'arn:aws:s3:::scrapeflow-results/*'
+            actions:
+              - 's3:GetObject'
+    users:
+      - accessKey: scrapeflow-delivery
+        existingSecret: scrapeflow-minio-delivery-credentials
+        existingSecretKey: password
+        policy: delivery-read

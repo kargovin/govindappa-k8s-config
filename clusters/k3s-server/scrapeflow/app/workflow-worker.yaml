@@ -67,7 +67,7 @@ spec:
               value: "scrapeflow-results"
             - name: MINIO_SECURE
               value: "false"
-            # app.settings refuses to load without both Fernet keys (BUG-019).
+            # app.settings refuses to load without the three Fernet keys and PUBLIC_BASE_URL (BUG-019).
             - name: LLM_KEY_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:
@@ -78,3 +78,10 @@ spec:
                 secretKeyRef:
                   name: scrapeflow-app-secrets
                   key: credentials-encryption-key
+            - name: DESTINATION_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrapeflow-destination-secrets
+                  key: destination-encryption-key
+            - name: PUBLIC_BASE_URL
+              value: "https://scrapeflow.govindappa.com"
