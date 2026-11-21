@@ -1,0 +1,70 @@
+# The http, playwright and LLM workers fetch user-chosen URLs (pages, robots/sitemaps, proxies, LLM
+# endpoints), so their pods get the delivery worker's fence (ScrapeFlow BUG-032): DNS, Temporal and
+# MinIO by pod and port, the public internet on any port, nothing private, not the node. No
+# ingress: nothing listens on these pods. The workflow worker is not selected (Postgres, Redis).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scrapeflow-scrape-workers
+  namespace: scrapeflow
+spec:
+  podSelector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values:
+          - scrapeflow-http-worker-temporal
+          - scrapeflow-playwright-worker-temporal
+          - scrapeflow-llm-worker-temporal
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app: scrapeflow-temporal
+      ports:
+        - protocol: TCP
+          port: 7233
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+              release: scrapeflow-minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # IPv4 only: IPv6 destinations are refused here. Keep this list equal to the delivery worker's.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # k3s pod and service CIDRs (inside 10.0.0.0/8 too; edit here if the cluster's differ).
+              - 10.42.0.0/16
+              - 10.43.0.0/16
+              # RFC 1918
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              # Carrier-grade NAT
+              - 100.64.0.0/10
+              # Link-local (cloud metadata) and loopback
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+              # The node's own address (InternalIP = its public IP, kimsufi-server). A pod reaching
+              # its node arrives from inside the machine (BUG-032). Add any other node address that
+              # `kubectl get nodes -o wide` lists.
+              - 139.99.121.44/32

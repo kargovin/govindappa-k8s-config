@@ -43,6 +43,7 @@ spec:
         - protocol: TCP
           port: 9000
     # IPv4 only: IPv6 destinations are refused here (the worker moves on to the next address).
+    # Keep this list equal to the scrape workers' (scrape-workers-networkpolicy.yaml).
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

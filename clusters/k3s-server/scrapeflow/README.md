@@ -400,6 +400,46 @@ kubectl -n scrapeflow get pods -l app=scrapeflow-temporal
 kubectl -n scrapeflow get pods -l app=minio,release=scrapeflow-minio
 ```
 
+### Scrape workers NetworkPolicy
+
+`app/scrape-workers-networkpolicy.yaml` — `NetworkPolicy` `scrapeflow-scrape-workers`, selecting
+the http, playwright and LLM worker pods (ScrapeFlow BUG-032). The delivery worker's rules,
+unchanged: CoreDNS, Temporal 7233, MinIO 9000, and `0.0.0.0/0` except the same private ranges and
+the node's address. **No ingress** — nothing listens on these pods (no ports, no probes, no metrics).
+The workflow worker is not selected: it reaches Postgres and Redis.
+
+> ⚠️ **Apply it only after the delivery worker's gate has passed** (ScrapeFlow M.12): until then
+> enforcement on this cluster is unproven. It takes effect on the running pods, no restart.
+> A target or LLM endpoint whose address is the node's — anything this cluster serves through
+> Traefik on 80/443 — is unreachable from then on, as for the delivery worker.
+>
+> ⚠️ **Keep the `except` list equal to the delivery worker's** — the node's address is in both.
+>
+> Rollback: `git revert` the commit and push (Flux prunes the policy).
+
+Run the probe before the push and after it. Before, the node answers (k3s API 6443 on its address,
+the kubelet 10250 on the cni0 address `10.42.0.1`) — if it does not, pick a port that does, or the
+"after" proves nothing. After, the same calls fail (timeout) and a public host still answers. The
+http worker's image is Alpine (busybox `nc`, `wget`); the other two have `python`:
+
+```bash
+PY='import socket,sys; socket.create_connection((sys.argv[1], int(sys.argv[2])), 5)'
+for hp in 139.99.121.44:6443 10.42.0.1:10250; do h=${hp%:*}; p=${hp#*:}
+  kubectl -n scrapeflow exec deploy/scrapeflow-http-worker-temporal -- nc -z -w 5 $h $p \
+    && echo "http $hp open" || echo "http $hp blocked"
+  for w in playwright llm; do
+    kubectl -n scrapeflow exec deploy/scrapeflow-$w-worker-temporal -- python -c "$PY" $h $p 2>/dev/null \
+      && echo "$w $hp open" || echo "$w $hp blocked"
+  done
+done
+kubectl -n scrapeflow exec deploy/scrapeflow-http-worker-temporal -- \
+  wget -q -T 10 -O /dev/null https://example.com && echo "http public ok"
+for w in playwright llm; do
+  kubectl -n scrapeflow exec deploy/scrapeflow-$w-worker-temporal -- python -c \
+    "import urllib.request; urllib.request.urlopen('https://example.com', timeout=10); print('$w public ok')"
+done
+```
+
 ---
 
 ## 3. GitHub Actions secrets (ScrapeFlow repo)
