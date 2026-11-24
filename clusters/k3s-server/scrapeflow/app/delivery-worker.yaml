@@ -32,7 +32,7 @@ spec:
       containers:
         - name: delivery-worker
           # The image's CMD is the venv's python as PID 1 (`python -m worker.main`).
-          image: k4rth/scrapeflow-delivery-worker:main-1795276971-d36a1148f1e393b9b3a4cd9bfeff866194b93dae # {"$imagepolicy": "flux-system:scrapeflow-delivery-worker-policy"}
+          image: k4rth/scrapeflow-delivery-worker:main-1795517612-cf73ade99c5119162c49d02010e32170a6da9c0f # {"$imagepolicy": "flux-system:scrapeflow-delivery-worker-policy"}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
