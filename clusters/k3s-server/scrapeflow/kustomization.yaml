@@ -8,6 +8,7 @@ resources:
   - infrastructure/temporal-ui.yaml
   - infrastructure/redis.yaml
   - infrastructure/minio.yaml
+  - infrastructure/egress.yaml
   - app/temporal-init-job.yaml
   - app/api.yaml
   - app/http-worker-temporal.yaml
@@ -18,6 +19,7 @@ resources:
   - app/delivery-worker-networkpolicy.yaml
   - app/scrape-workers-networkpolicy.yaml
   - app/workflow-worker-networkpolicy.yaml
+  - app/egress-networkpolicy.yaml
   - app/cleanup-cronjob.yaml
   - image-automation/image-repositories.yaml
   - image-automation/image-policies.yaml

@@ -48,6 +48,14 @@ spec:
       ports:
         - protocol: TCP
           port: 9000
+    # The egress proxy (BUG-010 part 2): every fetch of a user-chosen address goes through it.
+    - to:
+        - podSelector:
+            matchLabels:
+              app: scrapeflow-egress
+      ports:
+        - protocol: TCP
+          port: 4750
     # IPv4 only: IPv6 destinations are refused here. Keep this list equal to the delivery worker's.
     - to:
         - ipBlock:

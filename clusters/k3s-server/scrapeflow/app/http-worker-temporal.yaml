@@ -59,6 +59,9 @@ spec:
               value: "false"
             - name: FETCH_TIMEOUT_SECS
               value: "30"
+            # BUG-010 part 2: every fetch of a user-chosen address goes through it.
+            - name: EGRESS_PROXY_URL
+              value: "http://scrapeflow-egress:4750"
             - name: CREDENTIALS_ENCRYPTION_KEY
               valueFrom:
                 secretKeyRef:

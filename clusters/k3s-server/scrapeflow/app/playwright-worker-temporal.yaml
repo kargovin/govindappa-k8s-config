@@ -59,6 +59,9 @@ spec:
               value: "scrapeflow-results"
             - name: MINIO_SECURE
               value: "false"
+            # BUG-010 part 2: every fetch of a user-chosen address goes through it.
+            - name: EGRESS_PROXY_URL
+              value: "http://scrapeflow-egress:4750"
             - name: PLAYWRIGHT_MAX_WORKERS
               value: "3"
             - name: PLAYWRIGHT_DEFAULT_TIMEOUT_SECONDS

@@ -440,6 +440,40 @@ for w in playwright llm; do
 done
 ```
 
+### Egress proxy
+
+`infrastructure/egress.yaml` — ConfigMap, Deployment (2 replicas) and Service `scrapeflow-egress:4750`
+running Stripe Smokescreen (ScrapeFlow BUG-010 part 2), plus `app/egress-networkpolicy.yaml`. The
+http, playwright and LLM workers send every fetch of a user-chosen address through it
+(`EGRESS_PROXY_URL`): it resolves each name once, refuses an address that is not public unicast
+(a `407` with `X-Smokescreen-Error`; the run fails `address refused: <host> is not a public address`,
+not retried) and connects to the address it checked — redirects included. A job's own proxy is
+reached through it too (Go: a CONNECT tunnel; Chrome: given the proxy's checked IP).
+
+> ⚠️ **Release order: this push first, then the app's `main`.** The new worker images refuse to start
+> without `EGRESS_PROXY_URL`; the current ones ignore it. Rollback: the app first (re-tag), then
+> `git revert` this commit.
+>
+> ⚠️ **The ConfigMap is a copy of the app repo's `docker/egress/smokescreen.yaml`** — keep them equal,
+> and bump the Deployment's `scrapeflow/egress-config` annotation with any change (pods read the file
+> at start). `--deny-address 139.99.121.44` (the node) is the production-only addition.
+>
+> ⚠️ **Keep `app/egress-networkpolicy.yaml`'s `except` list equal to the scrape workers'.**
+
+Check after the push (Flux applied; before the app release):
+
+```bash
+kubectl -n scrapeflow get pods -l app=scrapeflow-egress          # 2/2 Running, Ready
+# from the http worker (busybox wget): public through the proxy, MinIO and the node refused
+kubectl -n scrapeflow exec deploy/scrapeflow-http-worker-temporal -- \
+  env http_proxy=http://scrapeflow-egress:4750 wget -q -T 10 -O /dev/null http://example.com && echo "public ok"
+for u in http://scrapeflow-minio:9000/ http://139.99.121.44:6443/ http://169.254.169.254/; do
+  kubectl -n scrapeflow exec deploy/scrapeflow-http-worker-temporal -- \
+    env http_proxy=http://scrapeflow-egress:4750 wget -q -T 10 -O /dev/null "$u" 2>&1 | head -1
+done   # expect each: "... 407 Proxy Authentication Required"
+kubectl -n scrapeflow logs -l app=scrapeflow-egress --tail=20 | grep -o '"decision_reason":"[^"]*"'
+```
+
 ### Workflow worker NetworkPolicy
 
 `app/workflow-worker-networkpolicy.yaml` — `NetworkPolicy` `scrapeflow-workflow-worker`, selecting
