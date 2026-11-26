@@ -23,7 +23,9 @@ spec:
           containers:
             - name: cleanup
               image: k4rth/scrapeflow-api:main-1795706761-4573f27cc34c3fbf270a363758c9f133a136de4a # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
-              command: ["python", "scripts/cleanup_old_runs.py"]
+              # The image's venv python, run as a module from /app (BUG-019): bare `python` has none
+              # of the app's packages, and a path puts scripts/ (not /app) on sys.path.
+              command: ["/app/.venv/bin/python", "-m", "scripts.cleanup_old_runs"]
               resources:
                 requests:
                   cpu: 50m
@@ -55,7 +57,17 @@ spec:
                   value: "false"
                 - name: SCHEDULE_RUN_RETENTION_DAYS
                   value: "90"
-                # Required by app.settings at import (M); the two older Fernet keys are BUG-019's.
+                # Required by app.settings at import, like the API's.
+                - name: LLM_KEY_ENCRYPTION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: scrapeflow-app-secrets
+                      key: llm-key-encryption-key
+                - name: CREDENTIALS_ENCRYPTION_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: scrapeflow-app-secrets
+                      key: credentials-encryption-key
                 - name: DESTINATION_ENCRYPTION_KEY
                   valueFrom:
                     secretKeyRef:

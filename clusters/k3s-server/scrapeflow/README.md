@@ -483,6 +483,45 @@ done
 > to a receiver you control (a public request bin) completes and its webhook is delivered
 > (`GET /admin/webhooks/deliveries` → `delivered`).
 
+### Nightly cleanup CronJob
+
+`app/cleanup-cronjob.yaml` — `scrapeflow-cleanup`, 03:00 UTC, runs the api image's
+`scripts/cleanup_old_runs.py` as `/app/.venv/bin/python -m scripts.cleanup_old_runs` with the
+three Fernet keys and `PUBLIC_BASE_URL` (`app.settings` refuses to load without them). Retention
+(`SCHEDULE_RUN_RETENTION_DAYS`, 90): **finished runs of scheduled jobs** (active or paused) older than
+that, **except each job's newest run**, with their objects (through the storage ledger) and webhook
+rows. One-off jobs, batches, crawls and pipelines are never touched. Until ScrapeFlow BUG-019 (2026-11-26) it
+had never succeeded, so the first good run is the whole backlog.
+
+> ⚠️ **Order:** the scheduled-only rule ships in the **api image** (ScrapeFlow `main`); the CronJob runs
+> whatever api image Flux has set. Push this repo only after the api image carrying BUG-019's script is
+> deployed — an older image deletes **every** run past 90 days. Check before the manual run:
+> `kubectl -n scrapeflow get cronjob scrapeflow-cleanup -o jsonpath='{.spec.jobTemplate.spec.template.spec.containers[0].image}'`.
+
+What the first run will delete (read-only):
+
+```bash
+kubectl -n scrapeflow exec -i sts/scrapeflow-postgresql -- sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
+select count(distinct r.id) as runs, coalesce(sum(s.bytes), 0) as bytes
+from job_runs r join jobs j on j.id = r.job_id
+left join storage_objects s on s.job_run_id = r.id
+where r.created_at < now() - interval '90 days' and j.schedule_status is not null
+  and r.status in ('completed', 'failed', 'cancelled')
+  and exists (select 1 from job_runs n where n.job_id = r.job_id and n.created_at > r.created_at);
+SQL
+```
+
+Run the first one by hand instead of meeting it at 03:00, and read its log:
+
+```bash
+kubectl -n scrapeflow create job --from=cronjob/scrapeflow-cleanup cleanup-manual
+kubectl -n scrapeflow wait --for=condition=complete job/cleanup-manual --timeout=10m
+kubectl -n scrapeflow logs job/cleanup-manual -c cleanup     # "cleanup: batch done" lines, then "cleanup: finished"
+kubectl -n scrapeflow delete job cleanup-manual
+```
+
+> Expected: the `deleted` totals add up to the query's `runs`; the query then returns 0.
+
 ---
 
 ## 3. GitHub Actions secrets (ScrapeFlow repo)
