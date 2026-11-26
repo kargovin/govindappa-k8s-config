@@ -406,7 +406,7 @@ kubectl -n scrapeflow get pods -l app=minio,release=scrapeflow-minio
 the http, playwright and LLM worker pods (ScrapeFlow BUG-032). The delivery worker's rules,
 unchanged: CoreDNS, Temporal 7233, MinIO 9000, and `0.0.0.0/0` except the same private ranges and
 the node's address. **No ingress** — nothing listens on these pods (no ports, no probes, no metrics).
-The workflow worker is not selected: it reaches Postgres and Redis.
+The workflow worker has its own policy (next section): it also reaches Postgres and Redis.
 
 > ⚠️ **Apply it only after the delivery worker's gate has passed** (ScrapeFlow M.12): until then
 > enforcement on this cluster is unproven. It takes effect on the running pods, no restart.
@@ -439,6 +439,49 @@ for w in playwright llm; do
     "import urllib.request; urllib.request.urlopen('https://example.com', timeout=10); print('$w public ok')"
 done
 ```
+
+### Workflow worker NetworkPolicy
+
+`app/workflow-worker-networkpolicy.yaml` — `NetworkPolicy` `scrapeflow-workflow-worker`, selecting
+`app: scrapeflow-workflow-worker` (ScrapeFlow BUG-032, its webhook half: the workflow worker sends every
+job, batch, crawl and pipeline webhook and alert). The scrape workers' rules plus **Postgres**
+(`app: scrapeflow-postgresql`, 5432) and **Redis** (`app: scrapeflow-redis`, 6379) by pod and port. **No
+ingress** — nothing listens on the pod (no ports, no probes). A webhook to the node's address (or to
+anything this cluster serves through Traefik, when its name resolves to the node) times out and is retried
+until it fails, like any unreachable receiver.
+
+> ⚠️ **Keep the `except` list equal to the delivery and scrape workers'.**
+>
+> ⚠️ **Everything the worker reaches inside the cluster must be listed** — a database or Redis moved
+> to another host, port or label is dropped by this policy and every workflow stalls. Rollback:
+> `git revert` the commit and push (Flux prunes the policy); it takes effect on the running pod, no
+> restart either way.
+
+Before the push, confirm the in-cluster hosts the worker uses (read-only; prints host names only):
+
+```bash
+kubectl -n scrapeflow exec deploy/scrapeflow-workflow-worker -- /app/.venv/bin/python -c \
+  "import os, urllib.parse as u; print(u.urlsplit(os.environ['DATABASE_URL']).hostname, u.urlsplit(os.environ['REDIS_URL']).hostname)"
+# expect: scrapeflow-postgresql scrapeflow-redis-master
+kubectl -n scrapeflow get pods -l app=scrapeflow-postgresql
+kubectl -n scrapeflow get pods -l app=scrapeflow-redis
+```
+
+Probe before the push and after it. Before, the node answers; after, the node is blocked, the four
+in-cluster services and a public host still answer:
+
+```bash
+PY='import socket,sys; socket.create_connection((sys.argv[1], int(sys.argv[2])), 5)'
+for hp in 139.99.121.44:6443 10.42.0.1:10250 scrapeflow-postgresql:5432 scrapeflow-redis-master:6379 \
+          scrapeflow-temporal:7233 scrapeflow-minio:9000 example.com:443; do h=${hp%:*}; p=${hp#*:}
+  kubectl -n scrapeflow exec deploy/scrapeflow-workflow-worker -- /app/.venv/bin/python -c "$PY" $h $p \
+    2>/dev/null && echo "$hp open" || echo "$hp blocked"
+done
+```
+
+> Expected after: the first two `blocked`, the other five `open`. Then one job with a `webhook_url`
+> to a receiver you control (a public request bin) completes and its webhook is delivered
+> (`GET /admin/webhooks/deliveries` → `delivered`).
 
 ---
 

@@ -17,6 +17,7 @@ resources:
   - app/delivery-worker.yaml
   - app/delivery-worker-networkpolicy.yaml
   - app/scrape-workers-networkpolicy.yaml
+  - app/workflow-worker-networkpolicy.yaml
   - app/cleanup-cronjob.yaml
   - image-automation/image-repositories.yaml
   - image-automation/image-policies.yaml

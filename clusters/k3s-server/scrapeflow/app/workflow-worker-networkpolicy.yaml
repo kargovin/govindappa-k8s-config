@@ -1,0 +1,80 @@
+# The workflow worker sends users' webhooks (job, batch, crawl, pipeline, alerts), so its pod gets the
+# scrape and delivery workers' fence (ScrapeFlow BUG-032), plus Postgres and Redis by pod and port:
+# DNS, Temporal, Postgres, Redis and MinIO in the cluster, the public internet on any port, nothing
+# private, not the node. No ingress: nothing listens on this pod (no ports, no probes).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: scrapeflow-workflow-worker
+  namespace: scrapeflow
+spec:
+  podSelector:
+    matchLabels:
+      app: scrapeflow-workflow-worker
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app: scrapeflow-temporal
+      ports:
+        - protocol: TCP
+          port: 7233
+    - to:
+        - podSelector:
+            matchLabels:
+              app: scrapeflow-postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    - to:
+        - podSelector:
+            matchLabels:
+              app: scrapeflow-redis
+      ports:
+        - protocol: TCP
+          port: 6379
+    - to:
+        - podSelector:
+            matchLabels:
+              app: minio
+              release: scrapeflow-minio
+      ports:
+        - protocol: TCP
+          port: 9000
+    # IPv4 only: IPv6 destinations are refused here. Keep this list equal to the delivery worker's
+    # and the scrape workers'.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # k3s pod and service CIDRs (inside 10.0.0.0/8 too; edit here if the cluster's differ).
+              - 10.42.0.0/16
+              - 10.43.0.0/16
+              # RFC 1918
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              # Carrier-grade NAT
+              - 100.64.0.0/10
+              # Link-local (cloud metadata) and loopback
+              - 169.254.0.0/16
+              - 127.0.0.0/8
+              # The node's own address (InternalIP = its public IP, kimsufi-server). A pod reaching
+              # its node arrives from inside the machine (BUG-032). Add any other node address that
+              # `kubectl get nodes -o wide` lists.
+              - 139.99.121.44/32
