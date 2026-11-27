@@ -28,7 +28,7 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
         - name: playwright-worker
-          image: k4rth/scrapeflow-playwright-worker:main-1795783541-e47b953a7df5a6b561b5dbfa3a2d84c5a7324714 # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
+          image: k4rth/scrapeflow-playwright-worker:main-1795794437-497029c85066470c43e5d1f093681b8facbcf00b # {"$imagepolicy": "flux-system:scrapeflow-playwright-worker-policy"}
           # Headed Chrome under Xvfb, PLAYWRIGHT_MAX_WORKERS contexts (ADR-008).
           resources:
             requests:
