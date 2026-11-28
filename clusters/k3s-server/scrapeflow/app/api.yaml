@@ -30,7 +30,7 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
         - name: api
-          image: k4rth/scrapeflow-api:main-1795794471-497029c85066470c43e5d1f093681b8facbcf00b # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
+          image: k4rth/scrapeflow-api:main-1795837541-38efb59e0f0d8f36c0a859da02ca231153b007c1 # {"$imagepolicy": "flux-system:scrapeflow-api-policy"}
           ports:
             - containerPort: 8000
           # Traefik drops a terminating pod from its endpoints a moment after SIGTERM would land.
