@@ -27,7 +27,7 @@ spec:
           command: ['sh', '-c', 'until nc -z scrapeflow-minio 9000; do echo waiting for minio; sleep 2; done']
       containers:
         - name: http-worker
-          image: k4rth/scrapeflow-http-worker:main-1795718146-e4b760be35c08c5e419127c21884af96591dcbb9 # {"$imagepolicy": "flux-system:scrapeflow-http-worker-policy"}
+          image: k4rth/scrapeflow-http-worker:main-1795837502-38efb59e0f0d8f36c0a859da02ca231153b007c1 # {"$imagepolicy": "flux-system:scrapeflow-http-worker-policy"}
           resources:
             requests:
               cpu: 50m
